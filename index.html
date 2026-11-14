@@ -265,7 +265,7 @@ function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 
 /* ---------- utilidades ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const money = n => '$' + (Math.round((n||0)*100)/100).toLocaleString('es-CO',{maximumFractionDigits:2});
+const money = n => 'Lps ' + (Math.round((n||0)*100)/100).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function parseF(s){ const [y,m,d] = String(s).split('-').map(Number); return new Date(y, m-1, d); }
 function isoF(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
