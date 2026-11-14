@@ -136,6 +136,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <h1>Mis Préstamos</h1>
     <span class="modo" id="modo">👁 Solo lectura</span>
     <button id="btnAdmin" onclick="entrarAdmin()">🔒 Administrar</button>
+    <button id="btnClave" onclick="abrirCambioClave()" hidden>🔑 Cambiar clave</button>
     <button id="btnSalir" onclick="salirAdmin()" hidden>🔓 Salir</button>
     <button class="bell" id="bell" onclick="irAlertas()" title="Alertas de vencimiento">🔔<span class="badge" id="badge" hidden></span></button>
     <button id="btnExport" onclick="exportar()" title="Descargar copia de seguridad" hidden>⬇ Respaldo</button>
@@ -225,6 +226,23 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div class="actions">
         <button type="button" onclick="cerrar('ovLogin')">Cancelar</button>
         <button type="submit" class="primary">Entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Cambiar clave -->
+<div class="overlay" id="ovClave">
+  <div class="modal chico">
+    <h2>Cambiar clave de administrador</h2>
+    <form id="claveForm" onsubmit="cambiarClave(event)" style="display:grid;gap:10px">
+      <div><label for="k_actual">Clave actual</label><input id="k_actual" type="password" autocomplete="current-password" required></div>
+      <div><label for="k_nueva">Clave nueva (mínimo 6 caracteres)</label><input id="k_nueva" type="password" autocomplete="new-password" minlength="6" required></div>
+      <div><label for="k_repite">Repite la clave nueva</label><input id="k_repite" type="password" autocomplete="new-password" minlength="6" required></div>
+      <div id="k_error" style="color:var(--danger);font-size:13px" hidden></div>
+      <div class="actions" style="margin-top:4px">
+        <button type="button" onclick="cerrar('ovClave')">Cancelar</button>
+        <button type="submit" class="primary" id="k_btn">Cambiar clave</button>
       </div>
     </form>
   </div>
@@ -451,6 +469,29 @@ async function enviarLogin(e){
     cerrar('ovLogin'); aplicarModo(); render(); toast('Modo administrador activado');
   }catch(err){ errEl.textContent = err && err.status ? err.message : 'No hay conexión con el servidor.'; errEl.hidden=false; }
 }
+function abrirCambioClave(){
+  document.getElementById('claveForm').reset();
+  document.getElementById('k_error').hidden = true;
+  abrir('ovClave'); document.getElementById('k_actual').focus();
+}
+async function cambiarClave(e){
+  e.preventDefault();
+  const actual = document.getElementById('k_actual').value;
+  const nueva = document.getElementById('k_nueva').value;
+  const repite = document.getElementById('k_repite').value;
+  const errEl = document.getElementById('k_error');
+  const mostrar = t => { errEl.textContent = t; errEl.hidden = false; };
+  if(nueva.length < 6) return mostrar('La clave nueva debe tener al menos 6 caracteres.');
+  if(nueva !== repite) return mostrar('Las dos claves nuevas no coinciden.');
+  if(nueva === actual) return mostrar('La clave nueva es igual a la actual.');
+  const btn = document.getElementById('k_btn'); btn.disabled = true;
+  try{
+    await rpc('cambiar_clave', {p_clave:actual, p_nueva:nueva});
+    clave = nueva; lsSet('prestamos_clave', nueva);
+    cerrar('ovClave'); toast('Clave cambiada. Usa la nueva clave desde ahora.');
+  }catch(err){ mostrar(err && err.message ? err.message : 'No se pudo cambiar la clave. Revisa tu conexión.'); }
+  finally{ btn.disabled = false; }
+}
 function salirAdmin(silencio){
   clave = null; try{ localStorage.removeItem('prestamos_clave'); }catch(e){}
   puedeEditar = false; aplicarModo(); render();
@@ -669,7 +710,7 @@ function confirmar(titulo, html, si){
 function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
 function aviso(t){ const el=document.getElementById('aviso'); el.hidden=!t; el.textContent=t||''; }
 function aplicarModo(){
-  for(const id of ['btnNuevo','btnImport','btnExport','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
+  for(const id of ['btnNuevo','btnImport','btnExport','btnClave','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
   document.getElementById('btnAdmin').hidden = puedeEditar;
   document.getElementById('modo').hidden = puedeEditar;
 }
