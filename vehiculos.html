@@ -137,6 +137,11 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
 .info div{background:var(--soft);border-radius:8px;padding:8px 10px;min-width:0}
 .info span{display:block;font-size:12px;color:var(--muted)}
+.info span.placa,.info span.punto{display:inline-block;color:inherit;font-size:12px}
+.punto{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--c);border:1px solid rgba(128,128,128,.55);vertical-align:-1px;margin-right:5px;flex:none}
+.colores{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.colores button{display:flex;align-items:center;gap:4px;padding:4px 9px;font-size:13px;border-radius:20px}
+.colores button.on{border-color:var(--primary-2);outline:2px solid var(--primary-2);outline-offset:-1px}
 .info b{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .destacado{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px}
 .destacado div{border:1px solid var(--line);border-radius:10px;padding:12px}
@@ -199,9 +204,11 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div class="full"><label for="f_dir">Dirección completa *</label><input name="direccion" id="f_dir" required autocomplete="off"></div>
 
       <h4>🚗 Vehículo</h4>
-      <div><label for="f_marca">Marca *</label><input name="marca" id="f_marca" required placeholder="Toyota"></div>
-      <div><label for="f_modelo">Modelo *</label><input name="modelo" id="f_modelo" required placeholder="Corolla"></div>
-      <div><label for="f_color">Color *</label><input name="color" id="f_color" required></div>
+      <div><label for="f_marca">Marca *</label><input name="marca" id="f_marca" required placeholder="Escribe o elige: Toyota" list="dl_marcas" autocomplete="off" oninput="actualizarModelos()"></div>
+      <div><label for="f_modelo">Modelo *</label><input name="modelo" id="f_modelo" required placeholder="Escribe o elige: Corolla" list="dl_modelos" autocomplete="off"></div>
+      <div class="full"><label for="f_color">Color *</label><input name="color" id="f_color" required placeholder="Elige un color o escríbelo" autocomplete="off" oninput="marcarColor()">
+        <div class="colores" id="colores"></div></div>
+      <datalist id="dl_marcas"></datalist><datalist id="dl_modelos"></datalist>
       <div><label for="f_placa">Placa *</label><input name="placa" id="f_placa" required style="text-transform:uppercase"></div>
 
       <h4>💵 Tarifa diaria</h4>
@@ -295,6 +302,49 @@ const difDias = (a,b) => Math.round((a-b)/86400000);
 const DIAS_SEM = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const plural = (n, s, p) => n + ' ' + (n===1 ? s : (p || s+'s'));
 const nombreAuto = v => [v.marca, v.modelo, v.anio].filter(Boolean).join(' ');
+const MODELOS = {
+  'Toyota':['Corolla','Yaris','Camry','Prius','Hilux','RAV4','Rush','Avanza','Fortuner','Land Cruiser Prado','Hiace'],
+  'Hyundai':['Accent','Elantra','Grand i10','i10','Sonata','Creta','Kona','Tucson','Santa Fe','Venue','H1'],
+  'Kia':['Rio','Picanto','Soluto','Forte','K5','Soul','Seltos','Sportage','Sorento'],
+  'Nissan':['Versa','Sentra','March','Note','Tiida','Almera','Kicks','X-Trail','Frontier'],
+  'Honda':['Civic','City','Fit','Accord','HR-V','CR-V','Pilot'],
+  'Mazda':['Mazda 2','Mazda 3','Mazda 6','CX-3','CX-30','CX-5','BT-50'],
+  'Mitsubishi':['Mirage','Mirage G4','Lancer','Attrage','ASX','Outlander','Montero Sport','L200'],
+  'Suzuki':['Swift','Dzire','Alto','Celerio','Ciaz','Ertiga','Vitara','Jimny'],
+  'Chevrolet':['Spark','Beat','Aveo','Sail','Onix','Cruze','Tracker','Captiva','Colorado'],
+  'Ford':['Fiesta','Focus','Figo','EcoSport','Escape','Explorer','Ranger'],
+  'Volkswagen':['Gol','Polo','Virtus','Jetta','T-Cross','Tiguan','Amarok'],
+  'Isuzu':['D-Max','MU-X'],
+  'Renault':['Kwid','Logan','Sandero','Stepway','Duster','Koleos'],
+  'Chery':['Arrizo 5','Tiggo 2','Tiggo 4','Tiggo 7'],
+  'Changan':['Alsvin','CS15','CS35','CS55'],
+  'Geely':['Emgrand','Coolray','Okavango'],
+  'JAC':['J7','JS2','JS4','T6'],
+  'BYD':['Dolphin','Dolphin Mini','Seagull','Yuan Plus','Song Plus'],
+  'Peugeot':['208','301','2008','3008'],
+  'Subaru':['Impreza','XV','Forester']
+};
+const COLORES = [['Blanco','#ffffff'],['Negro','#111111'],['Gris','#7d8088'],['Plata','#c7cad1'],['Rojo','#c62828'],['Vino','#6d1b2b'],
+  ['Azul','#1e4fbf'],['Azul marino','#14213d'],['Celeste','#7cc4f0'],['Verde','#2e7d32'],['Beige','#d9c7a3'],['Café','#6b4423'],
+  ['Dorado','#c8a24a'],['Naranja','#ef7d1a'],['Amarillo','#f2c230']];
+const colorHex = n => { const c = COLORES.find(([k])=>k.toLowerCase()===String(n||'').trim().toLowerCase()); return c ? c[1] : null; };
+const punto = n => { const h = colorHex(n); return h ? `<span class="punto" style="--c:${h}" aria-hidden="true"></span>` : ''; };
+/* Si lo escrito coincide con un nombre conocido (sin importar mayúsculas), usa el nombre bien escrito */
+function normalizar(texto, lista){
+  const t = String(texto||'').trim(); if(!t) return t;
+  const hit = lista.find(x=>x.toLowerCase()===t.toLowerCase());
+  return hit || t.charAt(0).toUpperCase() + t.slice(1);
+}
+function marcaConocida(m){ return Object.keys(MODELOS).find(k=>k.toLowerCase()===String(m||'').trim().toLowerCase()); }
+function actualizarModelos(){
+  const m = marcaConocida(document.getElementById('f_marca').value);
+  const lista = m ? MODELOS[m] : Object.values(MODELOS).flat();
+  document.getElementById('dl_modelos').innerHTML = lista.map(x=>`<option value="${esc(x)}">`).join('');
+}
+function marcarColor(){
+  const v = document.getElementById('f_color').value.trim().toLowerCase();
+  document.querySelectorAll('#colores button').forEach(b=>b.classList.toggle('on', b.dataset.c.toLowerCase()===v));
+}
 
 /* ---------- cálculos ---------- */
 function listaTarifas(v){
@@ -491,7 +541,7 @@ function render(){
         <div style="min-width:0"><h3>${esc(v.nombre)}</h3><div class="phone">📞 ${esc(v.telefono)}</div></div>
         ${chip(c)}
       </div>
-      <div class="auto"><span aria-hidden="true">🚗</span><span class="nm">${esc(nombreAuto(v))}${v.color?' · '+esc(v.color):''}</span><span class="placa">${esc(v.placa)}</span></div>
+      <div class="auto"><span aria-hidden="true">🚗</span><span class="nm">${esc(nombreAuto(v))}${v.color?' · '+punto(v.color)+esc(v.color):''}</span><span class="placa">${esc(v.placa)}</span></div>
       <div class="grid2">
         <span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
         ${c.aFavor>0.01?`<span>Saldo a favor</span><b style="color:var(--ok)">${money(c.aFavor)}</b>`
@@ -563,6 +613,8 @@ function salirAdmin(silencio){
 }
 
 /* ---------- formulario ---------- */
+document.getElementById('dl_marcas').innerHTML = Object.keys(MODELOS).map(x=>`<option value="${x}">`).join('');
+document.getElementById('colores').innerHTML = COLORES.map(([n,h])=>`<button type="button" data-c="${n}" onclick="document.getElementById('f_color').value='${n}';marcarColor()"><span class="punto" style="--c:${h}"></span>${n}</button>`).join('');
 const CAMPOS = ['id','nombre','documento','telefono','direccion','marca','modelo','color','placa','tarifa','fechaInicio'];
 function abrirForm(id){
   if(!puedeEditar) return;
@@ -585,6 +637,7 @@ function abrirForm(id){
   preview();
   cerrar('ovDetalle');
   abrir('ovForm');
+  actualizarModelos(); marcarColor();
   f.elements.nombre.focus();
 }
 function leerForm(){
@@ -636,6 +689,9 @@ async function guardarVehiculo(e){
   e.preventDefault();
   const o = leerForm();
   o.placa = o.placa.toUpperCase();
+  o.marca = normalizar(o.marca, Object.keys(MODELOS));
+  o.modelo = normalizar(o.modelo, MODELOS[marcaConocida(o.marca)] || Object.values(MODELOS).flat());
+  o.color = normalizar(o.color, COLORES.map(c=>c[0]));
   o.tarifa = +o.tarifa;
   lsSet('vehiculos_tarifa', o.tarifa);
   const base = o.id ? data.find(x=>x.id===o.id) : null;
@@ -722,7 +778,7 @@ function verDetalle(id){
       <div class="info">
         ${fila('Marca', esc(v.marca))}
         ${fila('Modelo', esc(v.modelo))}
-        ${fila('Color', esc(v.color))}
+        ${fila('Color', punto(v.color)+esc(v.color))}
         ${fila('Placa', `<span class="placa">${esc(v.placa)}</span>`)}
       </div>
     </div>
