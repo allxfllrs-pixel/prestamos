@@ -121,10 +121,6 @@ textarea{resize:vertical;min-height:60px}
 .form h4{grid-column:1/-1;margin:10px 0 0;font-size:15px;padding-top:10px;border-top:1px solid var(--line)}
 .form h4:first-of-type{border-top:0;padding-top:0;margin-top:0}
 label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
-.semana{display:flex;gap:6px;flex-wrap:wrap}
-.semana label{margin:0;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text);font-size:14px}
-.semana input{width:auto;margin:0}
-.semana label:has(input:checked){background:var(--chip-bad);border-color:var(--danger);color:var(--danger)}
 .preview{grid-column:1/-1;background:var(--soft);border-radius:8px;padding:10px;font-size:14px}
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 .section{margin-top:18px}
@@ -194,35 +190,21 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <form class="form" id="vehForm" onsubmit="guardarVehiculo(event)">
       <input type="hidden" name="id">
       <h4>👤 Conductor</h4>
-      <div class="full"><label for="f_nombre">Nombre completo *</label><input name="nombre" id="f_nombre" required></div>
-      <div><label for="f_tel">Teléfono *</label><input name="telefono" id="f_tel" type="tel" required></div>
-      <div><label for="f_doc">Identidad / Documento</label><input name="documento" id="f_doc"></div>
-      <div><label for="f_lic">Licencia de conducir</label><input name="licencia" id="f_lic"></div>
-      <div><label for="f_uber">Cuenta / plataforma</label><input name="plataforma" id="f_uber" placeholder="Uber, InDrive..."></div>
-      <div class="full"><label for="f_dir">Dirección</label><input name="direccion" id="f_dir"></div>
-      <div><label for="f_en">Contacto de emergencia</label><input name="emergenciaNombre" id="f_en"></div>
-      <div><label for="f_et">Teléfono de emergencia</label><input name="emergenciaTel" id="f_et" type="tel"></div>
+      <div class="full"><label for="f_nombre">Nombre completo *</label><input name="nombre" id="f_nombre" required autocomplete="off"></div>
+      <div><label for="f_doc">No. de DNI *</label><input name="documento" id="f_doc" required inputmode="numeric" autocomplete="off"></div>
+      <div><label for="f_tel">Número de teléfono *</label><input name="telefono" id="f_tel" type="tel" required autocomplete="off"></div>
+      <div class="full"><label for="f_dir">Dirección completa *</label><input name="direccion" id="f_dir" required autocomplete="off"></div>
 
       <h4>🚗 Vehículo</h4>
       <div><label for="f_marca">Marca *</label><input name="marca" id="f_marca" required placeholder="Toyota"></div>
       <div><label for="f_modelo">Modelo *</label><input name="modelo" id="f_modelo" required placeholder="Corolla"></div>
-      <div><label for="f_anio">Año</label><input name="anio" id="f_anio" type="number" min="1980" max="2100" step="1"></div>
-      <div><label for="f_color">Color</label><input name="color" id="f_color"></div>
+      <div><label for="f_color">Color *</label><input name="color" id="f_color" required></div>
       <div><label for="f_placa">Placa *</label><input name="placa" id="f_placa" required style="text-transform:uppercase"></div>
-      <div><label for="f_chasis">Chasis / VIN</label><input name="chasis" id="f_chasis"></div>
-      <div><label for="f_km">Kilometraje al entregar</label><input name="kmInicial" id="f_km" type="number" min="0" step="1"></div>
-      <div><label for="f_dep">Depósito / garantía</label><input name="deposito" id="f_dep" type="number" min="0" step="any"></div>
-      <div><label for="f_seg">Seguro vence</label><input name="seguroVence" id="f_seg" type="date"></div>
-      <div><label for="f_mat">Matrícula / revisión vence</label><input name="matriculaVence" id="f_mat" type="date"></div>
 
-      <h4>💵 Tarifa</h4>
-      <div><label for="f_tarifa">Tarifa diaria *</label><input name="tarifa" id="f_tarifa" type="number" min="0" step="any" required oninput="preview()"></div>
-      <div><label for="f_ini">Fecha de entrega (inicio) *</label><input name="fechaInicio" id="f_ini" type="date" required oninput="preview()"></div>
-      <div id="wrapDesde" hidden><label for="f_desde">La nueva tarifa aplica desde</label><input name="tarifaDesde" id="f_desde" type="date"></div>
-      <div class="full"><label>Días que NO se cobra</label>
-        <div class="semana" id="semana" onchange="preview()"></div>
-      </div>
-      <div class="full"><label for="f_notas">Notas</label><textarea name="notas" id="f_notas" placeholder="Condiciones del contrato, estado del vehículo al entregar, acuerdos..."></textarea></div>
+      <h4>💵 Tarifa diaria</h4>
+      <div><label for="f_tarifa">Cuánto paga por día *</label><input name="tarifa" id="f_tarifa" type="number" min="1" step="any" required oninput="preview()"></div>
+      <div><label for="f_ini">Cobrar desde el día *</label><input name="fechaInicio" id="f_ini" type="date" required oninput="preview()"></div>
+      <div id="wrapDesde" hidden><label for="f_desde">La nueva tarifa aplica desde</label><input name="tarifaDesde" id="f_desde" type="date" oninput="preview()"></div>
       <div class="preview" id="preview">Escribe la tarifa para ver el cálculo.</div>
       <div class="full actions">
         <button type="button" onclick="cerrar('ovForm')">Cancelar</button>
@@ -313,7 +295,7 @@ function calc(v){
   const pagado = pagos.reduce((s,p)=>s + (+p.monto||0), 0);
   const tope = addDays(h, 400);
   let cum = 0, devengado = 0, devAyer = 0, prox = null, proxFalta = 0, pagadoHasta = null, diasAtraso = 0, diasCobrados = 0;
-  const dias = new Map();
+  const dias = new Map(), diasDebe = [];
   for(let d = new Date(ini), guard = 0; guard < 6000; guard++, d = addDays(d,1)){
     const enPeriodo = d <= limite;
     if(!enPeriodo && (prox || fin || d > tope)) break;
@@ -329,6 +311,7 @@ function calc(v){
       if(cum <= pagado + 0.01) pagadoHasta = new Date(d);
       else {
         if(!prox){ prox = new Date(d); proxFalta = cum - Math.max(antes, pagado); }
+        if(enPeriodo) diasDebe.push({f:new Date(d), falta: cum - Math.max(antes, pagado)});
         if(d < h) diasAtraso++;
       }
     }
@@ -346,7 +329,7 @@ function calc(v){
   if(deuda > 0.01){ proxFecha = finalizado ? null : h; proxMonto = deuda; }
   else if(!finalizado && prox){ proxFecha = prox; proxMonto = proxFalta; }
   const ultimoPago = pagos.length ? pagos.map(p=>String(p.fecha)).sort().pop() : null;
-  return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox,
+  return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox, diasDebe,
           proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), tarifas, dias, libres, ini, fin, ultimoPago, h};
 }
 function estadoDia(c, d){
@@ -488,6 +471,7 @@ function render(){
       <div class="grid2">
         <span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
         <span>${c.deuda>0.01?'Debe':'Saldo a favor'}</span><b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda>0.01?c.deuda:c.aFavor)}</b>
+        ${c.diasDebe.length?`<span>Días que debe</span><b style="font-weight:600">${rangosDias(c.diasDebe)}</b>`:''}
         <span>Próximo pago</span><b>${textoProx(c)}</b>
         <span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
       </div>
@@ -551,9 +535,7 @@ function salirAdmin(silencio){
 }
 
 /* ---------- formulario ---------- */
-document.getElementById('semana').innerHTML = [1,2,3,4,5,6,0].map(n=>`<label><input type="checkbox" name="libre" value="${n}"> ${DIAS_SEM[n]}</label>`).join('');
-const CAMPOS = ['id','nombre','telefono','documento','licencia','plataforma','direccion','emergenciaNombre','emergenciaTel',
-  'marca','modelo','anio','color','placa','chasis','kmInicial','deposito','seguroVence','matriculaVence','tarifa','fechaInicio','notas'];
+const CAMPOS = ['id','nombre','documento','telefono','direccion','marca','modelo','color','placa','tarifa','fechaInicio'];
 function abrirForm(id){
   if(!puedeEditar) return;
   const f = document.getElementById('vehForm');
@@ -563,8 +545,6 @@ function abrirForm(id){
   if(v){
     for(const k of CAMPOS) if(f.elements[k]) f.elements[k].value = v[k] ?? '';
     f.elements.tarifa.value = tarifaEn(listaTarifas(v), hoy());
-    const libres = new Set((v.diasLibres||[]).map(String));
-    f.querySelectorAll('input[name=libre]').forEach(x=>x.checked = libres.has(x.value));
   } else {
     f.elements.id.value = '';
     f.elements.fechaInicio.value = isoF(hoy());
@@ -583,8 +563,30 @@ function leerForm(){
   const f = document.getElementById('vehForm'); const o = {};
   for(const k of CAMPOS) o[k] = String(f.elements[k].value).trim();
   o.tarifaDesde = f.elements.tarifaDesde.value;
-  o.diasLibres = [...f.querySelectorAll('input[name=libre]:checked')].map(x=>+x.value);
   return o;
+}
+/* Arma la lista de tarifas: al editar, las anteriores a "desde" se conservan y desde esa fecha rige la nueva */
+function construirTarifas(base, o){
+  const tarifa = +o.tarifa;
+  if(!base) return [{desde:o.fechaInicio, monto:tarifa}];
+  const desde = o.tarifaDesde || isoF(hoy());
+  let tarifas = listaTarifas(base);
+  if(o.fechaInicio !== base.fechaInicio) tarifas[0] = {...tarifas[0], desde:o.fechaInicio};
+  if(tarifa !== tarifaEn(tarifas, parseF(desde))){
+    tarifas = tarifas.filter(t=>String(t.desde) < desde);
+    tarifas.push({desde: tarifas.length ? desde : o.fechaInicio, monto:tarifa});
+  }
+  return tarifas;
+}
+/* "del 9 nov al 12 nov, 14 nov" — agrupa días seguidos */
+function rangosDias(lista){
+  const grupos = [];
+  for(const x of lista){
+    const g = grupos[grupos.length-1];
+    if(g && difDias(x.f, g.hasta) === 1) g.hasta = x.f; else grupos.push({desde:x.f, hasta:x.f});
+  }
+  const corta = d => d.toLocaleDateString('es',{day:'numeric',month:'short'});
+  return grupos.map(g => +g.desde === +g.hasta ? corta(g.desde) : `del ${corta(g.desde)} al ${corta(g.hasta)}`).join(', ');
 }
 function preview(){
   const f = document.getElementById('vehForm');
@@ -592,36 +594,26 @@ function preview(){
   const editando = !!o.id, cambio = editando && f.dataset.tarifaOriginal !== '' && +o.tarifa !== +f.dataset.tarifaOriginal;
   document.getElementById('wrapDesde').hidden = !cambio;
   const el = document.getElementById('preview');
-  if(!(+o.tarifa>0)){ el.textContent='Escribe la tarifa para ver el cálculo.'; return; }
-  const diasSem = 7 - o.diasLibres.length;
-  if(diasSem <= 0){ el.innerHTML = '<b style="color:var(--danger)">Marcaste todos los días como libres: no se cobraría nada.</b>'; return; }
-  el.innerHTML = `Se cobra <b>${plural(diasSem,'día')}</b> por semana${o.diasLibres.length?` (libre: ${o.diasLibres.map(n=>DIAS_SEM[n]).join(', ')})`:''}.<br>
-    Semanal: <b>${money(o.tarifa*diasSem)}</b> · Mensual aprox.: <b>${money(o.tarifa*diasSem*30/7)}</b>
+  if(!(+o.tarifa>0) || !o.fechaInicio){ el.textContent='Escribe cuánto paga por día para ver el cálculo.'; return; }
+  const base = editando ? data.find(x=>x.id===o.id) : null;
+  const c = calc({...(base||{}), fechaInicio:o.fechaInicio, tarifas:construirTarifas(base, o), pagos: base ? base.pagos||[] : []});
+  const nDeb = c.diasDebe.length;
+  el.innerHTML = `Paga <b>${money(o.tarifa)}</b> por día · <b>${money(o.tarifa*7)}</b> por semana · <b>${money(o.tarifa*30)}</b> por 30 días.<br>
+    ${c.ini > c.h ? `Empieza a cobrarse el <b>${fmtF(c.ini)}</b>.`
+      : nDeb ? `Debe <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(nDeb,'día')}: ${rangosDias(c.diasDebe)}.`
+      : `<span style="color:var(--ok)">No debe nada${c.pagadoHasta?` · pagado hasta el ${fmtF(c.pagadoHasta)}`:''}.</span>`}
     ${cambio?'<br><span style="color:var(--warn)">El cambio de tarifa no afecta los días anteriores a la fecha que elijas.</span>':''}`;
 }
 async function guardarVehiculo(e){
   e.preventDefault();
   const o = leerForm();
-  if(o.diasLibres.length >= 7){ toast('Debe haber al menos un día de cobro.'); return; }
   o.placa = o.placa.toUpperCase();
   o.tarifa = +o.tarifa;
-  for(const k of ['anio','kmInicial','deposito']) o[k] = o[k]==='' ? '' : +o[k];
   lsSet('vehiculos_tarifa', o.tarifa);
-  const desde = o.tarifaDesde || isoF(hoy()); delete o.tarifaDesde;
-  let v;
-  if(o.id){
-    const base = data.find(x=>x.id===o.id);
-    let tarifas = listaTarifas(base);
-    if(o.fechaInicio !== base.fechaInicio) tarifas[0] = {...tarifas[0], desde:o.fechaInicio};
-    if(o.tarifa !== tarifaEn(tarifas, parseF(desde))){
-      // las tarifas anteriores a "desde" se conservan; desde esa fecha rige la nueva
-      tarifas = tarifas.filter(t=>String(t.desde) < desde);
-      tarifas.push({desde: tarifas.length ? desde : o.fechaInicio, monto:o.tarifa});
-    }
-    v = {...base, ...o, tarifas};
-  } else {
-    v = {...o, id: uid(), tarifas:[{desde:o.fechaInicio, monto:o.tarifa}], pagos:[], estado:'activo', creado:new Date().toISOString()};
-  }
+  const base = o.id ? data.find(x=>x.id===o.id) : null;
+  const tarifas = construirTarifas(base, o); delete o.tarifaDesde;
+  const v = base ? {...base, ...o, tarifas}
+    : {...o, id: uid(), tarifas, pagos:[], estado:'activo', creado:new Date().toISOString()};
   const btn = document.getElementById('btnGuardar'); btn.disabled = true;
   try{
     await guardarDoc(v);
@@ -640,7 +632,7 @@ function verDetalle(id){
   const telLimpio = String(v.telefono).replace(/[^\d]/g,'');
   const msg = encodeURIComponent(
     `Hola ${v.nombre}, te escribo por la renta del vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
-    (c.deuda > 0.01 ? `Tienes pendiente ${money(c.deuda)}${c.diasAtraso?` (${plural(c.diasAtraso,'día')} de atraso)`:''}. `
+    (c.deuda > 0.01 ? `Tienes pendiente ${money(c.deuda)} de ${plural(c.diasDebe.length,'día')} (${rangosDias(c.diasDebe)}). `
                     : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}. `) +
     `¡Gracias!`);
   const fila = (k, val) => val!=='' && val!=null ? `<div><span>${k}</span><b>${val}</b></div>` : '';
@@ -651,7 +643,7 @@ function verDetalle(id){
   document.getElementById('detalle').innerHTML = `
     <div class="head">
       <div style="min-width:0"><h2 style="margin:0">${esc(v.nombre)}</h2>
-        <div class="phone">📞 <span style="user-select:all">${esc(v.telefono)}</span>${v.plataforma?' · '+esc(v.plataforma):''}</div></div>
+        <div class="phone">📞 <span style="user-select:all">${esc(v.telefono)}</span>${v.documento?' · DNI '+esc(v.documento):''}</div></div>
       <button class="small" onclick="cerrar('ovDetalle')" aria-label="Cerrar">✕</button>
     </div>
     <div style="margin:10px 0">${chip(c)}</div>
@@ -665,6 +657,14 @@ function verDetalle(id){
       <div><span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
         <small>${c.libres.size?'No se cobra: '+[...c.libres].sort().map(n=>DIAS_SEM[n]).join(', '):'Todos los días'}</small></div>
     </div>
+
+    ${c.diasDebe.length?`<div class="section">
+      <h4 style="color:var(--danger)">Días que debe (${c.diasDebe.length}) · ${money(c.deuda)}</h4>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Día</th><th class="n">Debe</th></tr></thead>
+        <tbody>${c.diasDebe.map(x=>`<tr><td>${x.f.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})}${+x.f===+h?' (hoy)':''}</td><td class="n">${money(x.falta)}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`:''}
 
     <div class="section">
       <h4>Últimos 30 días</h4>
@@ -680,28 +680,23 @@ function verDetalle(id){
         ${fila('Total pagado', `<span style="color:var(--ok)">${money(c.pagado)}</span>`)}
         ${fila('Pagado hasta', c.pagadoHasta?fmtF(c.pagadoHasta):'—')}
         ${fila('Último pago', c.ultimoPago?fmtF(c.ultimoPago):'—')}
-        ${v.deposito!==''&&v.deposito!=null?fila('Depósito / garantía', money(+v.deposito)):''}
-      </div>
-    </div>
-
-    <div class="section"><h4>🚗 Vehículo</h4>
-      <div class="info">
-        ${fila('Vehículo', esc(nombreAuto(v)))}
-        ${fila('Placa', `<span class="placa">${esc(v.placa)}</span>`)}
-        ${fila('Color', esc(v.color))}
-        ${fila('Chasis / VIN', esc(v.chasis))}
-        ${v.kmInicial!==''&&v.kmInicial!=null?fila('Km al entregar', (+v.kmInicial).toLocaleString('es-HN')+' km'):''}
-        ${v.seguroVence?fila('Seguro vence', `<span style="color:${docs.some(d=>d.nom==='Seguro')?'var(--warn)':'inherit'}">${fmtF(v.seguroVence)}</span>`):''}
-        ${v.matriculaVence?fila('Matrícula vence', `<span style="color:${docs.some(d=>d.nom!=='Seguro')?'var(--warn)':'inherit'}">${fmtF(v.matriculaVence)}</span>`):''}
       </div>
     </div>
 
     <div class="section"><h4>👤 Conductor</h4>
       <div class="info">
-        ${fila('Identidad', esc(v.documento))}
-        ${fila('Licencia', esc(v.licencia))}
-        ${fila('Dirección', esc(v.direccion))}
-        ${v.emergenciaNombre||v.emergenciaTel?fila('Emergencia', esc([v.emergenciaNombre, v.emergenciaTel].filter(Boolean).join(' · '))):''}
+        ${fila('No. de DNI', esc(v.documento))}
+        ${fila('Teléfono', esc(v.telefono))}
+        ${fila('Dirección completa', esc(v.direccion))}
+      </div>
+    </div>
+
+    <div class="section"><h4>🚗 Vehículo</h4>
+      <div class="info">
+        ${fila('Marca', esc(v.marca))}
+        ${fila('Modelo', esc(v.modelo))}
+        ${fila('Color', esc(v.color))}
+        ${fila('Placa', `<span class="placa">${esc(v.placa)}</span>`)}
       </div>
     </div>
     ${v.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(v.notas)}</div></div>`:''}
