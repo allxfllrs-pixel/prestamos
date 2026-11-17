@@ -56,6 +56,9 @@ details.mas > summary::-webkit-details-marker{display:none}
 details.mas .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);min-width:230px;padding:6px;z-index:20;display:grid}
 details.mas .menu button{background:transparent;border:0;text-align:left;padding:10px 12px;border-radius:8px;color:var(--text)}
 details.mas .menu button:hover{background:var(--soft)}
+.tel504{display:flex;align-items:stretch}
+.tel504 span{display:flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px;background:var(--soft);color:var(--text);font-size:14px;white-space:nowrap}
+.tel504 input{border-radius:0 8px 8px 0;min-width:0}
 .respaldo{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 .ab-rapidos{display:flex;gap:6px;flex-wrap:wrap}
 .ab-rapidos button{padding:4px 10px;font-size:13px}
@@ -136,6 +139,33 @@ function revisarRespaldo(seccion, hayDatos, exportar){
   el.innerHTML = `<span>📦 ${dias===null ? 'Todavía no has descargado una copia de seguridad.' : `Hace ${dias} días que no descargas una copia de seguridad.`} Guárdala por si algo se borra.</span>
     <button class="small primary" type="button">⬇ Descargar ahora</button>`;
   el.querySelector('button').onclick = () => el._exportar && el._exportar();
+}
+
+/* ---------- teléfono de Honduras (+504) ---------- */
+/* "99887766", "9988-7766" o "50499887766" -> "+504 9988-7766". Otros formatos se dejan como están. */
+function telLocal(t){
+  const d = String(t||'').replace(/\D/g,'');
+  if(d.length === 8) return d;
+  if(d.length === 11 && d.startsWith('504')) return d.slice(3);
+  return null;
+}
+function formatoTel(t){
+  const n = telLocal(t);
+  return n ? `+504 ${n.slice(0,4)}-${n.slice(4)}` : String(t||'').trim();
+}
+/* Para el formulario: muestra solo los 8 dígitos (el +504 va fijo al lado) */
+function telParaForm(t){ const n = telLocal(t); return n ? `${n.slice(0,4)}-${n.slice(4)}` : String(t||''); }
+/* Busca por teléfono sin importar guiones, espacios o el 504 */
+function telCoincide(t, q){ const d = String(q||'').replace(/\D/g,''); return d.length >= 3 && String(t||'').replace(/\D/g,'').includes(d); }
+/* Pone "+504" delante de los campos de teléfono y les da formato al escribir */
+function prepararCampoTel(input){
+  if(!input || input.dataset.tel) return;
+  input.dataset.tel = '1';
+  const caja = document.createElement('div'); caja.className = 'tel504';
+  input.parentNode.insertBefore(caja, input);
+  caja.innerHTML = '<span>🇭🇳 +504</span>'; caja.appendChild(input);
+  input.placeholder = '9988-7766'; input.inputMode = 'tel'; input.maxLength = 20;
+  input.addEventListener('blur', () => { input.value = telParaForm(input.value); });
 }
 
 /* ---------- WhatsApp ---------- */

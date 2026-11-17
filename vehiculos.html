@@ -399,8 +399,8 @@ function render(){
   }
   const lista = all.filter(({v,c})=>{
     if(q){
-      const txt = [v.nombre, v.telefono, v.placa, v.marca, v.modelo, v.color].join(' ').toLowerCase();
-      if(!txt.includes(q)) return false;
+      const txt = [v.nombre, v.placa, v.marca, v.modelo, v.color].join(' ').toLowerCase();
+      if(!txt.includes(q) && !telCoincide(v.telefono, q)) return false;
     }
     if(filtro==='deben') return c.deuda > 0.01;
     if(filtro==='finalizados') return v.estado==='finalizado';
@@ -412,7 +412,7 @@ function render(){
   el.innerHTML = lista.map(({v,c})=>`
     <div class="veh" onclick="verDetalle('${v.id}')">
       <div class="top">
-        <div style="min-width:0"><h3>${esc(v.nombre)}</h3><div class="phone">📞 ${esc(v.telefono)}</div></div>
+        <div style="min-width:0"><h3>${esc(v.nombre)}</h3><div class="phone">📞 ${esc(formatoTel(v.telefono))}</div></div>
         ${chip(c)}
       </div>
       <div class="auto"><span aria-hidden="true">🚗</span><span class="nm">${esc(nombreAuto(v))}${v.color?' · '+punto(v.color)+esc(v.color):''}</span><span class="placa">${esc(v.placa)}</span></div>
@@ -460,6 +460,7 @@ function abrirForm(id){
   document.getElementById('formTitle').textContent = v ? 'Editar alquiler' : 'Nuevo alquiler';
   if(v){
     for(const k of CAMPOS) if(f.elements[k]) f.elements[k].value = v[k] ?? '';
+    f.elements.telefono.value = telParaForm(v.telefono);
     f.elements.tarifa.value = tarifaEn(listaTarifas(v), hoy());
   } else {
     f.elements.id.value = '';
@@ -525,6 +526,7 @@ async function guardarVehiculo(e){
   e.preventDefault();
   const o = leerForm();
   o.placa = o.placa.toUpperCase();
+  o.telefono = formatoTel(o.telefono);
   o.marca = normalizar(o.marca, Object.keys(MODELOS));
   o.modelo = normalizar(o.modelo, MODELOS[marcaConocida(o.marca)] || Object.values(MODELOS).flat());
   o.color = normalizar(o.color, COLORES.map(c=>c[0]));
@@ -560,7 +562,7 @@ function verDetalle(id){
   document.getElementById('detalle').innerHTML = `
     <div class="head">
       <div style="min-width:0"><h2 style="margin:0">${esc(v.nombre)}</h2>
-        <div class="phone">📞 <span style="user-select:all">${esc(v.telefono)}</span>${v.documento?' · DNI '+esc(v.documento):''}</div></div>
+        <div class="phone">📞 <span style="user-select:all">${esc(formatoTel(v.telefono))}</span>${v.documento?' · DNI '+esc(v.documento):''}</div></div>
       <button class="small" onclick="cerrar('ovDetalle')" aria-label="Cerrar">✕</button>
     </div>
     <div style="margin:10px 0">${chip(c)}</div>
@@ -591,7 +593,7 @@ function verDetalle(id){
     <div class="section"><h4>👤 Conductor</h4>
       <div class="info">
         ${fila('No. de DNI', esc(v.documento))}
-        ${fila('Teléfono', esc(v.telefono))}
+        ${fila('Teléfono', esc(formatoTel(v.telefono)))}
         ${fila('Dirección completa', esc(v.direccion))}
       </div>
     </div>
@@ -766,6 +768,7 @@ async function cargar(){
     aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
   }
 }
+prepararCampoTel(document.getElementById('f_tel'));
 montarMenu('menuMas', [
   ['⬇ Descargar copia de seguridad', exportar],
   ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],

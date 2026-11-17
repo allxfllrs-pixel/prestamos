@@ -338,7 +338,7 @@ function renderAlertas(){
     </div>
     ${al.map(a=>`
       <div class="alerta" onclick="verDetalle('${a.p.id}')">
-        <div><div class="q">${esc(a.p.nombre)} · <span style="font-weight:400">📞 ${esc(a.p.telefono)}</span></div>
+        <div><div class="q">${esc(a.p.nombre)} · <span style="font-weight:400">📞 ${esc(formatoTel(a.p.telefono))}</span></div>
           <div class="d" style="color:${a.tipo==='vencido'?'var(--danger)':a.tipo==='hoy'?'var(--warn)':'var(--muted)'}">${a.texto}</div></div>
         <div class="m" style="color:${a.tipo==='vencido'?'var(--danger)':'inherit'}">${money(a.monto)}</div>
       </div>`).join('')}`;
@@ -378,7 +378,7 @@ function render(){
     return;
   }
   let lista = all.filter(x=>{
-    if(q && !(String(x.p.nombre).toLowerCase().includes(q) || String(x.p.telefono).includes(q))) return false;
+    if(q && !(String(x.p.nombre).toLowerCase().includes(q) || telCoincide(x.p.telefono, q))) return false;
     if(filtro==='activos') return x.c.estado!=='done';
     if(filtro==='atrasados') return x.c.estado==='bad';
     if(filtro==='pagados') return x.c.estado==='done';
@@ -390,7 +390,7 @@ function render(){
   el.innerHTML = lista.map(({p,c})=>`
     <div class="loan" onclick="verDetalle('${p.id}')">
       <div class="top">
-        <div><h3>${esc(p.nombre)}</h3><div class="phone">📞 ${esc(p.telefono)}</div></div>
+        <div><h3>${esc(p.nombre)}</h3><div class="phone">📞 ${esc(formatoTel(p.telefono))}</div></div>
         ${chip(c)}
       </div>
       <div class="grid2">
@@ -454,7 +454,7 @@ function abrirForm(id){
   document.getElementById('formTitle').textContent = p ? 'Editar préstamo' : 'Nuevo préstamo';
   if(p){
     for(const k of ['id','nombre','telefono','documento','direccion','capital','fechaInicio','tasa','tipoInteres','frecuencia','cuotas','notas'])
-      if(f.elements[k]) f.elements[k].value = p[k] ?? '';
+      if(f.elements[k]) f.elements[k].value = k==='telefono' ? telParaForm(p[k]) : (p[k] ?? '');
   } else {
     f.elements.id.value = '';
     f.elements.fechaInicio.value = isoF(hoy());
@@ -483,6 +483,7 @@ function preview(){
 async function guardarPrestamo(e){
   e.preventDefault();
   const o = leerForm();
+  o.telefono = formatoTel(o.telefono);
   o.capital = +o.capital; o.tasa = +o.tasa; o.cuotas = parseInt(o.cuotas,10);
   lsSet('prestamos_tasa', o.tasa);
   let p;
@@ -525,7 +526,7 @@ function verDetalle(id){
   document.getElementById('detalle').innerHTML = `
     <div class="head">
       <div style="min-width:0"><h2 style="margin:0">${esc(p.nombre)}</h2>
-        <div class="phone">📞 <span style="user-select:all">${esc(p.telefono)}</span>${p.documento?' · Doc: '+esc(p.documento):''}${p.direccion?' · '+esc(p.direccion):''}</div></div>
+        <div class="phone">📞 <span style="user-select:all">${esc(formatoTel(p.telefono))}</span>${p.documento?' · Doc: '+esc(p.documento):''}${p.direccion?' · '+esc(p.direccion):''}</div></div>
       <button class="small" onclick="cerrar('ovDetalle')">✕</button>
     </div>
     <div style="margin:10px 0">${chip(c)}</div>
@@ -701,6 +702,7 @@ async function cargar(){
     aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
   }
 }
+prepararCampoTel(document.getElementById('f_tel'));
 montarMenu('menuMas', [
   ['⬇ Descargar copia de seguridad', exportar],
   ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],
