@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Mis Vehículos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#3438c9">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
 <style>
 /* Alquiler diario de vehículos: misma estructura que Préstamos, en tono índigo */
@@ -58,7 +62,6 @@ button.danger{color:var(--danger);border-color:var(--danger);background:transpar
 button.small{padding:4px 10px;font-size:13px}
 a.btn{display:inline-block;text-decoration:none;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
 a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3);color:var(--on-primary);text-decoration:none;font-size:18px;font-weight:700}
-.modo{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3)}
 .aviso{background:var(--chip-warn);color:var(--text);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
@@ -98,18 +101,6 @@ textarea{resize:vertical;min-height:60px}
 .cardfoot .botones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .cardfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
-.alertas{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
-.alertas.hay-vencidos{border-left-color:var(--danger)}
-.alertas.limpio{border-left-color:var(--ok)}
-.alertas h3{margin:0;font-size:16px}
-.alertas .sub{color:var(--muted);font-size:13px;margin-top:2px}
-.alerta{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-top:8px;background:var(--soft)}
-.alerta:hover{outline:1px solid var(--primary-2)}
-.alerta .q{font-weight:600}
-.alerta .d{font-size:13px}
-.alerta .m{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.bell{position:relative}
-.bell .badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;font-weight:700}
 .overlay{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;
   padding:max(20px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 20px max(12px, env(safe-area-inset-left, 0px));overflow:auto;z-index:10}
 .overlay.open{display:flex}
@@ -131,9 +122,6 @@ th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .tablewrap{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px}
-.rapidos{display:flex;gap:6px;flex-wrap:wrap}
-.rapidos button{padding:4px 10px;font-size:13px}
-.pagoform{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end}
 .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
 .info div{background:var(--soft);border-radius:8px;padding:8px 10px;min-width:0}
 .info span{display:block;font-size:12px;color:var(--muted)}
@@ -153,8 +141,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}}
 @media (max-width:600px){
   .form{grid-template-columns:1fr}
-  .pagoform{grid-template-columns:1fr 1fr}
-  .pagoform .nota{grid-column:1/-1}
   .list{grid-template-columns:1fr}
 }
 </style>
@@ -163,29 +149,22 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   <div class="wrap gut">
     <a class="inicio" href="./" title="Volver al inicio" aria-label="Volver al inicio">←</a>
     <h1>Mis Vehículos</h1>
-    <span class="modo" id="modo">👁 Solo lectura</span>
-    <button id="btnAdmin" onclick="entrarAdmin()">🔒 Administrar</button>
-    <button id="btnSalir" onclick="salirAdmin()" hidden>🔓 Salir</button>
-    <button class="bell" id="bell" onclick="irAlertas()" title="Alertas">🔔<span class="badge" id="badge" hidden></span></button>
-    <button id="btnExport" onclick="exportar()" title="Descargar copia de seguridad" hidden>⬇ Respaldo</button>
-    <button id="btnImport" onclick="document.getElementById('fileImport').click()" title="Cargar copia de seguridad" hidden>⬆ Restaurar</button>
+    <div id="menuMas"></div>
     <input type="file" id="fileImport" accept=".json,application/json" hidden onchange="importar(event)">
-    <button class="primary" id="btnNuevo" onclick="abrirForm()" hidden>+ Nuevo alquiler</button>
+    <button class="primary" id="btnNuevo" onclick="abrirForm()">+ Nuevo alquiler</button>
   </div>
 </header>
 
 <main class="wrap gut">
   <div class="aviso" id="aviso" hidden></div>
-  <div class="alertas" id="alertas"></div>
+  <div id="respaldoAviso" hidden></div>
   <div class="stats" id="stats"></div>
   <div class="toolbar">
     <input id="buscar" placeholder="Buscar por conductor, teléfono, placa o modelo..." oninput="render()">
     <div class="filters" id="filters">
       <button data-f="activos" class="on">Activos</button>
-      <button data-f="hoy">Pendiente hoy</button>
-      <button data-f="atrasados">Atrasados</button>
+      <button data-f="deben">Deben</button>
       <button data-f="finalizados">Finalizados</button>
-      <button data-f="todos">Todos</button>
     </div>
   </div>
   <div class="list" id="list"><div class="empty">Cargando vehículos…</div></div>
@@ -227,27 +206,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <!-- Detalle -->
 <div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
 
-<!-- Abono a la deuda -->
-<div class="overlay" id="ovAbono">
-  <div class="modal chico">
-    <div class="head"><h2 id="abTitulo">Abonar a la deuda</h2><button class="small" onclick="cerrar('ovAbono')" aria-label="Cerrar">✕</button></div>
-    <div id="abDeuda" class="preview" style="margin-bottom:12px"></div>
-    <form id="abonoForm" onsubmit="guardarAbono(event)" style="display:grid;gap:10px">
-      <div><label for="ab_monto">¿Cuánto abona?</label><input id="ab_monto" type="number" min="0.01" step="any" required oninput="previewAbono()" style="font-size:20px;font-weight:700"></div>
-      <div class="rapidos" id="abRapidos"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label for="ab_fecha">Fecha</label><input id="ab_fecha" type="date" required></div>
-        <div><label for="ab_nota">Nota (opcional)</label><input id="ab_nota" placeholder="Efectivo..."></div>
-      </div>
-      <div id="abResultado" class="preview"></div>
-      <div class="actions" style="margin-top:0">
-        <button type="button" onclick="cerrar('ovAbono')">Cancelar</button>
-        <button type="submit" class="primary" id="abBtn">Registrar abono</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- Confirmación -->
 <div class="overlay" id="ovConfirm">
   <div class="modal chico">
@@ -260,33 +218,15 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   </div>
 </div>
 
-<!-- Clave de administrador -->
-<div class="overlay" id="ovLogin">
-  <div class="modal chico">
-    <h2>Modo administrador</h2>
-    <form id="loginForm" onsubmit="enviarLogin(event)">
-      <label for="l_clave">Clave (la misma de Préstamos)</label>
-      <input id="l_clave" type="password" autocomplete="current-password" required>
-      <div id="l_error" style="color:var(--danger);font-size:13px;margin-top:6px" hidden></div>
-      <div class="actions">
-        <button type="button" onclick="cerrar('ovLogin')">Cancelar</button>
-        <button type="submit" class="primary">Entrar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <div class="toast" id="toast" role="status"></div>
 
+<script src="comun.js"></script>
 <script>
 let data = [];
 let filtro = 'activos';
 let abiertoId = null;
-let clave = lsGet('prestamos_clave'); // misma clave que la sección Préstamos
-let puedeEditar = false, cargado = false, versionDatos = -1, sinTabla = false;
-
-function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
-function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+const puedeEditar = true;   // solo se entra con la clave
+let cargado = false, versionDatos = -1, sinTabla = false;
 
 /* ---------- utilidades ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -299,7 +239,6 @@ function fmtCorta(d){ return d.toLocaleDateString('es',{weekday:'short',day:'num
 function hoy(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 const difDias = (a,b) => Math.round((a-b)/86400000);
-const DIAS_SEM = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const plural = (n, s, p) => n + ' ' + (n===1 ? s : (p || s+'s'));
 const nombreAuto = v => [v.marca, v.modelo, v.anio].filter(Boolean).join(' ');
 const MODELOS = {
@@ -363,7 +302,6 @@ function calc(v){
   const finalizado = v.estado === 'finalizado';
   const fin = finalizado && v.fechaFin ? parseF(v.fechaFin) : null;
   const limite = fin && fin < h ? fin : h;
-  const libres = new Set((v.diasLibres||[]).map(Number));
   const tarifas = listaTarifas(v);
   const pagos = v.pagos || [];
   const pagado = pagos.reduce((s,p)=>s + (+p.monto||0), 0);
@@ -373,8 +311,8 @@ function calc(v){
   for(let d = new Date(ini), guard = 0; guard < 6000; guard++, d = addDays(d,1)){
     const enPeriodo = d <= limite;
     if(!enPeriodo && (prox || fin || d > tope)) break;
-    const cob = !libres.has(d.getDay());
-    const m = cob ? tarifaEn(tarifas, d) : 0;
+    const cob = true;
+    const m = tarifaEn(tarifas, d);
     const antes = cum; cum += m;
     if(enPeriodo){
       devengado += m; if(d < h) devAyer += m;
@@ -404,7 +342,7 @@ function calc(v){
   else if(!finalizado && prox){ proxFecha = prox; proxMonto = proxFalta; }
   const ultimoPago = pagos.length ? pagos.map(p=>String(p.fecha)).sort().pop() : null;
   return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox, diasDebe,
-          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), tarifas, dias, libres, ini, fin, ultimoPago, h};
+          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), tarifas, dias, ini, fin, ultimoPago, h};
 }
 function estadoDia(c, d){
   const iso = isoF(d);
@@ -412,13 +350,12 @@ function estadoDia(c, d){
   const x = c.dias.get(iso);
   if(!x) return 'na';
   const esHoy = +d === +c.h;
-  if(!x.cob || x.m <= 0) return 'libre';
   if(x.despues <= c.pagado + 0.01) return esHoy ? 'hoy pag' : 'pag';
   if(x.antes < c.pagado - 0.01) return esHoy ? 'hoy parc' : 'parc';
   return esHoy ? 'hoy' : 'deb';
 }
 function tiraDias(c, n){
-  const NOMBRES = {pag:'pagado', parc:'pago parcial', deb:'sin pagar', libre:'no se cobra', na:'sin alquiler', hoy:'hoy, pendiente', 'hoy pag':'hoy, pagado', 'hoy parc':'hoy, pago parcial'};
+  const NOMBRES = {pag:'pagado', parc:'pago parcial', deb:'sin pagar', na:'sin alquiler', hoy:'hoy, pendiente', 'hoy pag':'hoy, pagado', 'hoy parc':'hoy, pago parcial'};
   let html = '';
   for(let i = n-1; i >= 0; i--){
     const d = addDays(c.h, -i), e = estadoDia(c, d);
@@ -426,99 +363,38 @@ function tiraDias(c, n){
   }
   return `<div class="dias" aria-label="Últimos ${n} días">${html}</div>`;
 }
-const LEYENDA = `<div class="leyenda"><span style="--c:var(--day-pag)">Pagado</span><span style="--c:var(--day-parc)">Parcial</span><span style="--c:var(--day-deb)">Sin pagar</span><span style="--c:var(--day-libre)">No se cobra</span></div>`;
+const LEYENDA = `<div class="leyenda"><span style="--c:var(--day-pag)">Pagado</span><span style="--c:var(--day-parc)">Parcial</span><span style="--c:var(--day-deb)">Sin pagar</span></div>`;
 function chip(c){
   if(c.estado==='done') return '<span class="chip done">Finalizado ✓</span>';
-  if(c.estado==='bad') return c.fin ? '<span class="chip bad">Finalizado con deuda</span>'
-    : `<span class="chip bad">Atrasado ${plural(c.diasAtraso,'día')}</span>`;
-  if(c.estado==='warn') return '<span class="chip warn">Pendiente hoy</span>';
+  const n = c.diasDebe.length;
+  if(c.deuda > 0.01) return `<span class="chip ${c.estado==='bad'?'bad':'warn'}">${n===1 && c.estado!=='bad' ? 'Debe hoy' : 'Debe '+plural(n,'día')}</span>`;
   return '<span class="chip ok">Al día</span>';
 }
-function textoProx(c){
-  if(!c.proxFecha) return '—';
-  const d = difDias(c.proxFecha, c.h);
-  const cuando = d===0 ? 'Hoy' : d===1 ? 'Mañana' : fmtCorta(c.proxFecha);
-  return `${cuando} · ${money(c.proxMonto)}`;
-}
-
-/* ---------- alertas ---------- */
-function documentosPorVencer(v){
-  const res = [], h = hoy();
-  for(const [k, nom] of [['seguroVence','Seguro'],['matriculaVence','Matrícula / revisión']]){
-    if(!v[k]) continue;
-    const d = difDias(parseF(v[k]), h);
-    if(d <= 15) res.push({nom, d, f:v[k]});
-  }
-  return res;
-}
-function obtenerAlertas(){
-  const res = [];
-  for(const v of data){
-    const c = calc(v);
-    if(c.estado==='bad') res.push({v, c, tipo:'atraso', monto:c.deuda,
-      texto: c.fin ? `Alquiler finalizado con saldo pendiente` : `${plural(c.diasAtraso,'día')} sin pagar · debe desde ${fmtF(c.primerImpago || c.ini)}`});
-    if(v.estado !== 'finalizado') for(const doc of documentosPorVencer(v))
-      res.push({v, c, tipo:'doc', monto:null,
-        texto: doc.d < 0 ? `${doc.nom} vencido desde ${fmtF(doc.f)}` : doc.d===0 ? `${doc.nom} vence HOY` : `${doc.nom} vence en ${plural(doc.d,'día')} (${fmtF(doc.f)})`});
-  }
-  res.sort((a,b)=> (a.tipo===b.tipo ? 0 : a.tipo==='atraso' ? -1 : 1) || ((b.monto||0)-(a.monto||0)));
-  return res;
-}
-function renderAlertas(){
-  const box = document.getElementById('alertas');
-  const al = obtenerAlertas();
-  const atrasos = al.filter(a=>a.tipo==='atraso').length;
-  const pendHoy = data.filter(v=>calc(v).estado==='warn').length;
-  box.classList.toggle('hay-vencidos', atrasos>0);
-  box.classList.toggle('limpio', cargado && !al.length);
-  const badge = document.getElementById('badge');
-  badge.hidden = !al.length; badge.textContent = al.length;
-  document.title = (al.length ? `(${al.length}) ` : '') + 'Mis Vehículos';
-  const titulo = !cargado ? '🔔 Alertas'
-    : al.length ? (atrasos?'⚠️':'🔔')+` Alertas (${al.length})` : '✅ Todos al día';
-  const sub = cargado && pendHoy ? `<div class="sub">${plural(pendHoy,'conductor','conductores')} todavía no ha${pendHoy===1?'':'n'} pagado la tarifa de hoy.</div>` : '';
-  box.innerHTML = `<h3>${titulo}</h3>${sub}
-    ${al.map(a=>`
-      <div class="alerta" onclick="verDetalle('${a.v.id}')">
-        <div><div class="q">${esc(a.v.nombre)} · <span style="font-weight:400">${esc(nombreAuto(a.v))} <span class="placa">${esc(a.v.placa)}</span></span></div>
-          <div class="d" style="color:${a.tipo==='atraso'?'var(--danger)':'var(--warn)'}">${a.tipo==='doc'?'📄 ':''}${a.texto}</div></div>
-        ${a.monto!=null?`<div class="m" style="color:var(--danger)">${money(a.monto)}</div>`:''}
-      </div>`).join('')}`;
-}
-function irAlertas(){ document.getElementById('alertas').scrollIntoView({behavior:'smooth'}); }
+const colorDeuda = c => c.deuda > 0.01 ? (c.estado==='bad' ? 'var(--danger)' : 'var(--warn)') : 'var(--ok)';
 
 /* ---------- render principal ---------- */
 function render(){
-  renderAlertas();
   const q = document.getElementById('buscar').value.trim().toLowerCase();
   const all = data.map(v=>({v, c:calc(v)}));
   const activos = all.filter(x=>x.v.estado!=='finalizado');
-  const h = hoy(), hIso = isoF(h), mesIso = hIso.slice(0,7);
-  let cobHoy = 0, cobMes = 0;
-  for(const v of data) for(const p of (v.pagos||[])){
-    if(p.fecha===hIso) cobHoy += +p.monto||0;
-    if(String(p.fecha).slice(0,7)===mesIso) cobMes += +p.monto||0;
-  }
-  const s = {
-    diario: activos.reduce((t,x)=>t + (x.c.libres.has(h.getDay()) ? 0 : x.c.tarifaHoy), 0),
-    deuda: all.reduce((t,x)=>t + x.c.deuda, 0),
-    atrasados: all.filter(x=>x.c.estado==='bad').length
-  };
+  const hIso = isoF(hoy());
+  let cobHoy = 0;
+  for(const v of data) for(const p of (v.pagos||[])) if(p.fecha===hIso) cobHoy += +p.monto||0;
+  const porCobrar = activos.reduce((t,x)=>t + x.c.tarifaHoy, 0);
+  const deuda = all.reduce((t,x)=>t + x.c.deuda, 0);
+  const deben = all.filter(x=>x.c.deuda>0.01).length;
+  document.title = (deben ? `(${deben}) ` : '') + 'Mis Vehículos';
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="l">Vehículos rentados</div><div class="v">${activos.length}</div></div>
-    <div class="stat"><div class="l">A cobrar hoy</div><div class="v">${money(s.diario)}</div></div>
+    <div class="stat"><div class="l">Por cobrar hoy</div><div class="v">${money(porCobrar)}</div><div class="phone">${plural(activos.length,'vehículo')}</div></div>
     <div class="stat"><div class="l">Cobrado hoy</div><div class="v" style="color:var(--ok)">${money(cobHoy)}</div></div>
-    <div class="stat"><div class="l">Cobrado este mes</div><div class="v">${money(cobMes)}</div></div>
-    <div class="stat"><div class="l">Deuda total</div><div class="v" style="color:${s.deuda>0.01?'var(--danger)':'inherit'}">${money(s.deuda)}</div></div>
-    <div class="stat"><div class="l">Atrasados</div><div class="v">${s.atrasados}</div></div>`;
+    <div class="stat"><div class="l">Deuda total</div><div class="v" style="color:${deuda>0.01?'var(--danger)':'inherit'}">${money(deuda)}</div><div class="phone">${deben ? plural(deben,'conductor','conductores')+(deben===1?' debe':' deben') : 'Nadie debe'}</div></div>`;
+  revisarRespaldo('vehiculos', data.length > 0, exportar);
 
   const el = document.getElementById('list');
   if(!cargado){ el.innerHTML = '<div class="empty">Cargando vehículos…</div>'; return; }
   if(sinTabla){ el.innerHTML = '<div class="empty">La base de datos de vehículos todavía no está creada.<br>Ejecuta el archivo <b>vehiculos.sql</b> en Supabase &gt; SQL Editor.</div>'; return; }
   if(!data.length){
-    el.innerHTML = puedeEditar
-      ? `<div class="empty">Aún no tienes vehículos alquilados.<br><br><button class="primary" onclick="abrirForm()">+ Registrar el primer alquiler</button></div>`
-      : '<div class="empty">Todavía no hay vehículos registrados.</div>';
+    el.innerHTML = `<div class="empty">Aún no tienes vehículos alquilados.<br><br><button class="primary" onclick="abrirForm()">+ Registrar el primer alquiler</button></div>`;
     return;
   }
   const lista = all.filter(({v,c})=>{
@@ -526,11 +402,9 @@ function render(){
       const txt = [v.nombre, v.telefono, v.placa, v.marca, v.modelo, v.color].join(' ').toLowerCase();
       if(!txt.includes(q)) return false;
     }
-    if(filtro==='activos') return v.estado!=='finalizado';
-    if(filtro==='hoy') return c.estado==='warn';
-    if(filtro==='atrasados') return c.estado==='bad';
+    if(filtro==='deben') return c.deuda > 0.01;
     if(filtro==='finalizados') return v.estado==='finalizado';
-    return true;
+    return v.estado!=='finalizado';
   });
   const orden = {bad:0,warn:1,ok:2,done:3};
   lista.sort((a,b)=> orden[a.c.estado]-orden[b.c.estado] || b.c.deuda-a.c.deuda || String(a.v.nombre).localeCompare(String(b.v.nombre)));
@@ -545,17 +419,16 @@ function render(){
       <div class="grid2">
         <span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
         ${c.aFavor>0.01?`<span>Saldo a favor</span><b style="color:var(--ok)">${money(c.aFavor)}</b>`
-          :`<span>Debe</span><b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda)}</b>`}
-        ${c.diasDebe.length?`<span>Días que debe</span><b style="font-weight:600">${rangosDias(c.diasDebe)}</b>`:''}
-        <span>Próximo pago</span><b>${textoProx(c)}</b>
+          :`<span>Debe</span><b style="color:${colorDeuda(c)}">${money(c.deuda)}</b>`}
+        ${c.diasDebe.length?`<span>Días</span><b style="font-weight:600">${rangosDias(c.diasDebe)}</b>`:''}
         <span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
       </div>
       ${tiraDias(c, 14)}
       <div class="cardfoot">
         <span>Últimos 14 días</span>
-        ${puedeEditar && !(v.estado==='finalizado' && c.deuda<=0.01) ? `<span class="botones">
-          <button class="small" onclick="event.stopPropagation();abrirAbono('${v.id}')">💵 ${c.deuda>0.01?'Abonar':'Adelantar pago'}</button>
-          ${c.deuda>0.01?`<button class="small primary" onclick="event.stopPropagation();cobrarRapido('${v.id}')">✓ Pagó todo</button>`:''}
+        ${!(v.estado==='finalizado' && c.deuda<=0.01) ? `<span class="botones">
+          <button class="small" onclick="event.stopPropagation();abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar':'Adelantar pago'}</button>
+          ${c.deuda>0.01?`<button class="small primary" onclick="event.stopPropagation();abonar('${v.id}',true)">✓ Pagó todo</button>`:''}
         </span>`:''}
       </div>
     </div>`).join('');
@@ -567,57 +440,20 @@ document.getElementById('filters').addEventListener('click', e=>{
   render();
 });
 
-/* ---------- comunicación con Supabase (mismo proyecto que Préstamos) ---------- */
-const SB_URL = 'https://rgybhbofsmnwsxzratex.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJneWJoYm9mc21ud3N4enJhdGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2NzcwNTIsImV4cCI6MjExMDI1MzA1Mn0.ORVlGYMNMH57GbyCc9sEUeZzNnJcygUyhyE-YQI390w';
-const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
-async function rpc(fn, args){
-  const r = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:SB_HEADERS, body:JSON.stringify(args)});
-  let j = null; try{ j = await r.json(); }catch(e){}
-  if(!r.ok){
-    const msg = (j && j.message) || ('Error '+r.status);
-    const err = new Error(msg); err.status = /Clave incorrecta/.test(msg) ? 401 : r.status; throw err;
-  }
-  return j;
-}
+/* ---------- guardar (la conexión está en comun.js) ---------- */
 async function guardarDoc(v){ await rpc('guardar_vehiculo', {p_clave:clave||'', p_id:v.id, p_datos:v}); }
 function errorGuardar(e){
   console.error(e);
-  if(e && e.status===401){ salirAdmin(true); toast('La clave ya no es válida. Entra de nuevo como administrador.'); }
-  else if(e && e.status===404) toast('Falta crear la tabla de vehículos en Supabase (archivo vehiculos.sql).');
-  else toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
+  if(claveRechazada(e)) return;
+  toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
 }
-async function claveValida(c){ return (await rpc('verificar_clave', {p_clave:c})) === true; }
 function reemplazar(v){ const i = data.findIndex(x=>x.id===v.id); if(i>=0) data[i]=v; else data.push(v); }
-
-/* ---------- modo administrador ---------- */
-function entrarAdmin(){
-  document.getElementById('l_clave').value=''; document.getElementById('l_error').hidden=true;
-  abrir('ovLogin'); document.getElementById('l_clave').focus();
-}
-async function enviarLogin(e){
-  e.preventDefault();
-  const c = document.getElementById('l_clave').value.trim();
-  const errEl = document.getElementById('l_error');
-  try{
-    if(!await claveValida(c)){ errEl.textContent = 'Clave incorrecta'; errEl.hidden=false; return; }
-    clave = c; lsSet('prestamos_clave', c); puedeEditar = true;
-    cerrar('ovLogin'); aplicarModo(); render(); toast('Modo administrador activado');
-  }catch(err){ errEl.textContent = err && err.status ? err.message : 'No hay conexión con el servidor.'; errEl.hidden=false; }
-}
-function salirAdmin(silencio){
-  clave = null; try{ localStorage.removeItem('prestamos_clave'); }catch(e){}
-  puedeEditar = false; aplicarModo(); render();
-  if(document.getElementById('ovDetalle').classList.contains('open') && abiertoId) verDetalle(abiertoId);
-  if(!silencio) toast('Saliste del modo administrador');
-}
 
 /* ---------- formulario ---------- */
 document.getElementById('dl_marcas').innerHTML = Object.keys(MODELOS).map(x=>`<option value="${x}">`).join('');
 document.getElementById('colores').innerHTML = COLORES.map(([n,h])=>`<button type="button" data-c="${n}" onclick="document.getElementById('f_color').value='${n}';marcarColor()"><span class="punto" style="--c:${h}"></span>${n}</button>`).join('');
 const CAMPOS = ['id','nombre','documento','telefono','direccion','marca','modelo','color','placa','tarifa','fechaInicio'];
 function abrirForm(id){
-  if(!puedeEditar) return;
   const f = document.getElementById('vehForm');
   f.reset();
   const v = id ? data.find(x=>x.id===id) : null;
@@ -713,14 +549,12 @@ function verDetalle(id){
   abiertoId = id;
   const c = calc(v), h = c.h;
   const pagos = (v.pagos||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
-  const telLimpio = String(v.telefono).replace(/[^\d]/g,'');
-  const msg = encodeURIComponent(
+  const wa = linkWhatsApp(v.telefono,
     `Hola ${v.nombre}, te escribo por la renta del vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
     (c.deuda > 0.01 ? `Tienes pendiente ${money(c.deuda)} de ${plural(c.diasDebe.length,'día')} (${rangosDias(c.diasDebe)}). `
                     : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}. `) +
     `¡Gracias!`);
   const fila = (k, val) => val!=='' && val!=null ? `<div><span>${k}</span><b>${val}</b></div>` : '';
-  const docs = documentosPorVencer(v);
   const finalizado = v.estado==='finalizado';
 
   document.getElementById('detalle').innerHTML = `
@@ -732,13 +566,13 @@ function verDetalle(id){
     <div style="margin:10px 0">${chip(c)}</div>
 
     <div class="destacado">
-      <div><span>${c.deuda>0.01?'Debe':'Saldo a favor'}</span>
-        <b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda>0.01?c.deuda:c.aFavor)}</b>
-        <small>${c.diasAtraso?plural(c.diasAtraso,'día')+' de atraso':c.deuda>0.01?'Solo la tarifa de hoy':'Sin deuda'}</small></div>
-      <div><span>Próximo pago</span><b>${c.proxFecha?money(c.proxMonto):'—'}</b>
-        <small>${c.proxFecha?(difDias(c.proxFecha,h)===0?'Hoy':fmtCorta(c.proxFecha)):finalizado?'Alquiler finalizado':''}</small></div>
+      <div><span>${c.aFavor>0.01?'Saldo a favor':'Debe'}</span>
+        <b style="color:${colorDeuda(c)}">${money(c.aFavor>0.01?c.aFavor:c.deuda)}</b>
+        <small>${c.diasDebe.length ? plural(c.diasDebe.length,'día')+': '+rangosDias(c.diasDebe) : 'No debe nada'}</small></div>
+      <div><span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
+        <small>${c.ultimoPago?'Último pago: '+fmtF(c.ultimoPago):'Sin pagos todavía'}</small></div>
       <div><span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
-        <small>${c.libres.size?'No se cobra: '+[...c.libres].sort().map(n=>DIAS_SEM[n]).join(', '):'Todos los días'}</small></div>
+        <small>${finalizado?'Devuelto el '+(v.fechaFin?fmtF(v.fechaFin):'—'):'Desde el '+fmtF(v.fechaInicio)}</small></div>
     </div>
 
     ${c.diasDebe.length?`<div class="section">
@@ -752,18 +586,6 @@ function verDetalle(id){
     <div class="section">
       <h4>Últimos 30 días</h4>
       ${tiraDias(c, 30)}${LEYENDA}
-    </div>
-
-    <div class="section"><h4>💵 Cuenta</h4>
-      <div class="info">
-        ${fila('Entregado el', fmtF(v.fechaInicio))}
-        ${finalizado?fila('Devuelto el', v.fechaFin?fmtF(v.fechaFin):'—'):fila('Días de alquiler', difDias(h, c.ini)+1)}
-        ${fila('Días cobrados', c.diasCobrados)}
-        ${fila('Total generado', money(c.devengado))}
-        ${fila('Total pagado', `<span style="color:var(--ok)">${money(c.pagado)}</span>`)}
-        ${fila('Pagado hasta', c.pagadoHasta?fmtF(c.pagadoHasta):'—')}
-        ${fila('Último pago', c.ultimoPago?fmtF(c.ultimoPago):'—')}
-      </div>
     </div>
 
     <div class="section"><h4>👤 Conductor</h4>
@@ -784,10 +606,10 @@ function verDetalle(id){
     </div>
     ${v.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(v.notas)}</div></div>`:''}
 
-    ${(puedeEditar && !(finalizado && c.deuda<=0.01))?`
+    ${!(finalizado && c.deuda<=0.01)?`
     <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="primary" onclick="abrirAbono('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
-      ${c.deuda>0.01?`<button onclick="cobrarRapido('${v.id}')">✓ Pagó todo (${money(c.deuda)})</button>`:''}
+      <button class="primary" onclick="abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
+      ${c.deuda>0.01?`<button onclick="abonar('${v.id}',true)">✓ Pagó todo (${money(c.deuda)})</button>`:''}
     </div>`:''}
 
     <div class="section">
@@ -806,7 +628,7 @@ function verDetalle(id){
     <div class="actions">
       ${puedeEditar?`<button class="danger" onclick="borrarVehiculo('${v.id}')">Eliminar</button>`:''}
       ${puedeEditar?(finalizado?`<button onclick="reactivar('${v.id}')">↺ Reactivar alquiler</button>`:`<button onclick="finalizar('${v.id}')">🏁 Finalizar alquiler</button>`):''}
-      ${telLimpio?`<a class="btn" href="https://wa.me/${telLimpio}?text=${msg}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+      ${wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">💬 Recordatorio por WhatsApp</a>`:''}
       ${puedeEditar?`<button class="primary" onclick="abrirForm('${v.id}')">✏ Editar / cambiar tarifa</button>`:''}
     </div>`;
   abrir('ovDetalle');
@@ -817,56 +639,40 @@ async function registrarPago(id, monto, fecha, nota){
   try{
     await guardarDoc(v); reemplazar(v); render();
     if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(id);
-    toast('Abono de '+money(monto)+' registrado'); return true;
+    return true;
   }catch(err){ errorGuardar(err); return false; }
 }
-let abonoId = null;
-function abrirAbono(id){
-  const v = data.find(x=>x.id===id); if(!v || !puedeEditar) return;
-  abonoId = id;
-  const c = calc(v);
-  const debe = c.deuda > 0.01;
-  document.getElementById('abTitulo').textContent = debe ? 'Abonar a la deuda' : 'Adelantar pago';
-  document.getElementById('abDeuda').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>` +
-    (debe ? `Debe <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(c.diasDebe.length,'día')}: ${rangosDias(c.diasDebe)}.`
-          : `<span style="color:var(--ok)">No debe nada</span>${c.pagadoHasta?` · pagado hasta el ${fmtF(c.pagadoHasta)}`:''}.`);
-  const r2 = n => Math.round(n*100)/100;
-  const opciones = debe
-    ? [[`Todo · ${money(c.deuda)}`, r2(c.deuda)], ...(c.deuda > c.tarifaHoy*2 ? [[`La mitad · ${money(c.deuda/2)}`, r2(c.deuda/2)]] : []), [`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy]]
-    : [[`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy], [`1 semana · ${money(c.tarifaHoy*7)}`, c.tarifaHoy*7]];
-  document.getElementById('abRapidos').innerHTML = opciones.map(([t,m])=>`<button type="button" onclick="document.getElementById('ab_monto').value=${m};previewAbono()">${t}</button>`).join('');
-  document.getElementById('ab_monto').value = '';
-  document.getElementById('ab_fecha').value = isoF(hoy());
-  document.getElementById('ab_nota').value = '';
-  previewAbono();
-  abrir('ovAbono');
-  document.getElementById('ab_monto').focus();
-}
-function previewAbono(){
-  const v = data.find(x=>x.id===abonoId); if(!v) return;
-  const el = document.getElementById('abResultado');
-  const monto = +document.getElementById('ab_monto').value;
-  if(!(monto > 0)){ el.textContent = 'Escribe el monto para ver cómo queda la cuenta.'; return; }
-  const c = calc({...v, pagos:[...(v.pagos||[]), {monto}]});
-  el.innerHTML = c.deuda > 0.01
-    ? `Después del abono queda debiendo <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(c.diasDebe.length,'día')}: ${rangosDias(c.diasDebe)}.`
-    : `<span style="color:var(--ok)">✓ Queda al día</span>${c.pagadoHasta?`, pagado hasta el <b>${fmtF(c.pagadoHasta)}</b>`:''}${c.aFavor>0.01?` · saldo a favor <b>${money(c.aFavor)}</b>`:''}.`;
-}
-async function guardarAbono(e){
-  e.preventDefault();
-  const monto = +document.getElementById('ab_monto').value;
-  if(!(monto > 0) || !abonoId) return;
-  const btn = document.getElementById('abBtn'); btn.disabled = true;
-  const ok = await registrarPago(abonoId, monto, document.getElementById('ab_fecha').value, document.getElementById('ab_nota').value.trim());
-  btn.disabled = false;
-  if(ok) cerrar('ovAbono');
-}
-async function cobrarRapido(id){
+/* Abre la ventana de abono. Con "todo" viene lleno con la deuda completa. */
+function abonar(id, todo){
   const v = data.find(x=>x.id===id); if(!v) return;
-  const c = calc(v), monto = Math.round(c.deuda*100)/100;
-  if(!(monto > 0)) return;
-  if(!await confirmar('Pagó todo', `¿<b>${esc(v.nombre)}</b> pagó toda la deuda de <b>${money(monto)}</b> hoy? Quedará al día.`, 'Sí, registrar')) return;
-  await registrarPago(id, monto, isoF(hoy()), '');
+  const c = calc(v), debe = c.deuda > 0.01;
+  const despues = m => calc({...v, pagos:[...(v.pagos||[]), {monto:m}]});
+  const estadoTxt = c2 => c2.deuda > 0.01
+    ? `Queda debiendo <b style="color:var(--danger)">${money(c2.deuda)}</b> de ${plural(c2.diasDebe.length,'día')}: ${rangosDias(c2.diasDebe)}.`
+    : `<span style="color:var(--ok)">✓ Queda al día</span>${c2.pagadoHasta?`, pagado hasta el <b>${fmtF(c2.pagadoHasta)}</b>`:''}${c2.aFavor>0.01?` · saldo a favor <b>${money(c2.aFavor)}</b>`:''}.`;
+  abrirAbono({
+    titulo: debe ? 'Abonar a la deuda' : 'Adelantar pago',
+    resumen: `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>` +
+      (debe ? `Debe <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(c.diasDebe.length,'día')}: ${rangosDias(c.diasDebe)}.`
+            : `<span style="color:var(--ok)">No debe nada</span>${c.pagadoHasta?` · pagado hasta el ${fmtF(c.pagadoHasta)}`:''}.`),
+    rapidos: debe
+      ? [[`Todo · ${money(c.deuda)}`, c.deuda], ...(c.deuda > c.tarifaHoy*2 ? [[`La mitad · ${money(c.deuda/2)}`, c.deuda/2]] : []), [`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy]]
+      : [[`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy], [`1 semana · ${money(c.tarifaHoy*7)}`, c.tarifaHoy*7]],
+    montoInicial: todo ? c.deuda : 0,
+    previsualizar: m => 'Después del abono: ' + estadoTxt(despues(m)),
+    guardar: (m, fecha, nota) => registrarPago(id, m, fecha, nota),
+    recibo: (m, fecha) => {
+      const c2 = calc(data.find(x=>x.id===id));
+      return {
+        tel: v.telefono,
+        resumen: `Abono de <b>${money(m)}</b> de ${esc(v.nombre)}.<br>${estadoTxt(c2)}`,
+        texto: `Hola ${v.nombre}, recibí tu pago de ${money(m)} el ${fmtF(fecha)} por el vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
+          (c2.deuda > 0.01 ? `Saldo pendiente: ${money(c2.deuda)} (${rangosDias(c2.diasDebe)}).`
+                           : `Quedas al día${c2.pagadoHasta?` hasta el ${fmtF(c2.pagadoHasta)}`:''}${c2.aFavor>0.01?`, con ${money(c2.aFavor)} a favor`:''}.`) +
+          ' ¡Gracias!'
+      };
+    }
+  });
 }
 async function borrarPago(pid){
   if(!await confirmar('Borrar pago','¿Seguro que quieres borrar este pago?','Borrar')) return;
@@ -907,7 +713,8 @@ function exportar(){
   a.download = 'respaldo-vehiculos-' + isoF(hoy()) + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-  toast('Respaldo descargado');
+  marcarRespaldo('vehiculos');
+  toast('Copia de seguridad descargada');
 }
 async function importar(e){
   const file = e.target.files[0]; e.target.value=''; if(!file) return;
@@ -941,42 +748,33 @@ function confirmar(titulo, html, si){
 }
 function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
 function aviso(t){ const el=document.getElementById('aviso'); el.hidden=!t; el.textContent=t||''; }
-function aplicarModo(){
-  for(const id of ['btnNuevo','btnImport','btnExport','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
-  document.getElementById('btnAdmin').hidden = puedeEditar;
-  document.getElementById('modo').hidden = puedeEditar;
-}
-
 /* ---------- carga de datos (se actualiza sola cada 10 segundos) ---------- */
 async function cargar(){
   try{
-    const r = await fetch(SB_URL+'/rest/v1/vehiculos?select=id,datos,actualizado&order=id', {headers:SB_HEADERS, cache:'no-store'});
-    if(r.status===404){ sinTabla = true; cargado = true; aviso(''); render(); return; }
-    if(!r.ok) throw new Error(r.status);
+    const filas = await leerFilas('vehiculos');
     sinTabla = false;
-    const filas = await r.json();
     aviso('');
     const firma = filas.map(f=>f.id+'@'+f.actualizado).join('|');
     if(firma === versionDatos && cargado) return;
     versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
     render();
     const ov = document.getElementById('ovDetalle');
-    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#ovAbono');
-    if(ov.classList.contains('open') && abiertoId && !escribiendo) verDetalle(abiertoId);
+    if(ov.classList.contains('open') && abiertoId) verDetalle(abiertoId);
   }catch(e){
+    if(claveRechazada(e)) return;
+    if(e && e.status===404){ sinTabla = true; cargado = true; aviso(''); render(); return; }
     aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
   }
 }
-async function init(){
-  aplicarModo(); render();
-  if(clave){
-    try{
-      if(await claveValida(clave)){ puedeEditar = true; aplicarModo(); } else salirAdmin(true);
-    }catch(e){}
-  }
+montarMenu('menuMas', [
+  ['⬇ Descargar copia de seguridad', exportar],
+  ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],
+  ['🔓 Salir en este dispositivo', () => salir()]
+]);
+iniciarAcceso('Mis Vehículos', async () => {
+  render();
   await cargar();
   setInterval(cargar, 10000);
   setInterval(render, 60*60*1000);
-}
-init();
+});
 </script>

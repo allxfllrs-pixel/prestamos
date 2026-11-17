@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Mis Negocios</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#060b24">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
 <style>
 :root{
@@ -116,24 +120,23 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px calc(1
   </nav>
 </main>
 <footer>Los datos se guardan en línea y se ven igual en todos tus dispositivos.</footer>
+<script src="comun.js"></script>
 <script>
 (function(){
   const h = new Date().getHours();
   document.getElementById('saludo').textContent = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
 })();
-// Conteos en vivo (opcional: si falla, las tarjetas funcionan igual)
-const SB_URL = 'https://rgybhbofsmnwsxzratex.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJneWJoYm9mc21ud3N4enJhdGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2NzcwNTIsImV4cCI6MjExMDI1MzA1Mn0.ORVlGYMNMH57GbyCc9sEUeZzNnJcygUyhyE-YQI390w';
+// Conteos en vivo: solo si este dispositivo ya tiene la clave (si falla, las tarjetas funcionan igual)
 async function contar(tabla, el, uno, varios){
   try{
-    const r = await fetch(SB_URL+'/rest/v1/'+tabla+'?select=id', {headers:{apikey:SB_KEY, Authorization:'Bearer '+SB_KEY}, cache:'no-store'});
-    if(!r.ok) return;
-    const n = (await r.json()).length;
+    const n = (await leerFilas(tabla)).length;
     document.getElementById(el).textContent = n + ' ' + (n===1 ? uno : varios);
   }catch(e){}
 }
-contar('prestamos','pPrest','préstamo','préstamos');
-contar('vehiculos','pVeh','vehículo','vehículos');
+if(clave){
+  contar('prestamos','pPrest','préstamo','préstamos');
+  contar('vehiculos','pVeh','vehículo','vehículos');
+}
 </script>
 </body>
 </html>

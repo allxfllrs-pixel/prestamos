@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Mis Préstamos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#1f6f5c">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
 <style>
 /* Layout: banda verde de cabecera + alertas + resumen + tarjetas de clientes; detalle en modal */
@@ -54,7 +58,6 @@ button.danger{color:var(--danger);border-color:var(--danger);background:transpar
 button.small{padding:4px 10px;font-size:13px}
 a.btn{display:inline-block;text-decoration:none;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
 a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3);color:var(--on-primary);text-decoration:none;font-size:18px;font-weight:700}
-.modo{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3)}
 .aviso{background:var(--chip-warn);color:var(--text);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
@@ -69,6 +72,7 @@ textarea{resize:vertical;min-height:60px}
 .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .loan{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow);cursor:pointer;min-width:0}
 .loan:hover{border-color:var(--primary-2)}
+.loan .pie{display:flex;justify-content:flex-end;margin-top:10px}
 .loan .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .loan h3{margin:0;font-size:17px}
 .phone{color:var(--muted);font-size:13px}
@@ -116,7 +120,6 @@ th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .tablewrap{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px}
-.abonoform{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end}
 .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
 .info div{background:var(--soft);border-radius:8px;padding:8px 10px}
 .info span{display:block;font-size:12px;color:var(--muted)}
@@ -126,8 +129,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}}
 @media (max-width:600px){
   .form{grid-template-columns:1fr}
-  .abonoform{grid-template-columns:1fr 1fr}
-  .abonoform .nota{grid-column:1/-1}
   .list{grid-template-columns:1fr}
 }
 </style>
@@ -136,20 +137,16 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   <div class="wrap gut">
     <a class="inicio" href="./" title="Volver al inicio" aria-label="Volver al inicio">←</a>
     <h1>Mis Préstamos</h1>
-    <span class="modo" id="modo">👁 Solo lectura</span>
-    <button id="btnAdmin" onclick="entrarAdmin()">🔒 Administrar</button>
-    <button id="btnClave" onclick="abrirCambioClave()" hidden>🔑 Cambiar clave</button>
-    <button id="btnSalir" onclick="salirAdmin()" hidden>🔓 Salir</button>
     <button class="bell" id="bell" onclick="irAlertas()" title="Alertas de vencimiento">🔔<span class="badge" id="badge" hidden></span></button>
-    <button id="btnExport" onclick="exportar()" title="Descargar copia de seguridad" hidden>⬇ Respaldo</button>
-    <button id="btnImport" onclick="document.getElementById('fileImport').click()" title="Cargar copia de seguridad" hidden>⬆ Restaurar</button>
+    <div id="menuMas"></div>
     <input type="file" id="fileImport" accept=".json,application/json" hidden onchange="importar(event)">
-    <button class="primary" id="btnNuevo" onclick="abrirForm()" hidden>+ Nuevo préstamo</button>
+    <button class="primary" id="btnNuevo" onclick="abrirForm()">+ Nuevo préstamo</button>
   </div>
 </header>
 
 <main class="wrap gut">
   <div class="aviso" id="aviso" hidden></div>
+  <div id="respaldoAviso" hidden></div>
   <div class="alertas" id="alertas"></div>
   <div class="stats" id="stats"></div>
   <div class="toolbar">
@@ -217,22 +214,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   </div>
 </div>
 
-<!-- Clave de administrador -->
-<div class="overlay" id="ovLogin">
-  <div class="modal chico">
-    <h2>Modo administrador</h2>
-    <form id="loginForm" onsubmit="enviarLogin(event)">
-      <label for="l_clave">Clave</label>
-      <input id="l_clave" type="password" inputmode="numeric" autocomplete="current-password" required>
-      <div id="l_error" style="color:var(--danger);font-size:13px;margin-top:6px" hidden></div>
-      <div class="actions">
-        <button type="button" onclick="cerrar('ovLogin')">Cancelar</button>
-        <button type="submit" class="primary">Entrar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- Cambiar clave -->
 <div class="overlay" id="ovClave">
   <div class="modal chico">
@@ -252,18 +233,14 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 
 <div class="toast" id="toast" role="status"></div>
 
+<script src="comun.js"></script>
 <script>
 const COL = 'prestamos';
 let data = [];
 let filtro = 'todos';
 let abiertoId = null;
-let clave = lsGetSafe('prestamos_clave');
-let puedeEditar = false, cargado = false, versionDatos = -1;
-function lsGetSafe(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
-
-/* ---------- almacenamiento local (solo preferencias) ---------- */
-function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
-function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+const puedeEditar = true;   // solo se entra con la clave
+let cargado = false, versionDatos = -1;
 
 /* ---------- utilidades ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -390,12 +367,12 @@ function render(){
     <div class="stat"><div class="l">Vencido sin pagar</div><div class="v" style="color:var(--danger)">${money(s.vencido)}</div></div>
     <div class="stat"><div class="l">Clientes</div><div class="v">${activos.length} activos · ${s.atrasados} atrasados</div></div>`;
 
+  revisarRespaldo('prestamos', data.length > 0, exportar);
   const el = document.getElementById('list');
   if(!cargado){ el.innerHTML = '<div class="empty">Cargando préstamos…</div>'; return; }
   if(!data.length){
     el.innerHTML = puedeEditar
       ? `<div class="empty">Aún no hay préstamos aquí.<br><br>
-          Si ya tienes préstamos en la app de tu computador, descarga allí un <b>⬇ Respaldo</b> y cárgalo aquí con <b>⬆ Restaurar</b>.<br><br>
           <button class="primary" onclick="abrirForm()">+ Agregar un préstamo</button></div>`
       : '<div class="empty">Todavía no hay préstamos registrados.</div>';
     return;
@@ -426,6 +403,7 @@ function render(){
         <span>${c.proxima?'Próximo pago':'Finalizado'}</span><b>${c.proxima?fmtF(c.proxima):'—'}</b>
       </div>
       <div class="bar"><i style="width:${Math.min(100,c.pagado/c.total*100)}%"></i></div>
+      ${c.saldo>0.01?`<div class="pie"><button class="small" onclick="event.stopPropagation();abonarPrestamo('${p.id}')">💵 Abonar</button></div>`:''}
     </div>`).join('');
 }
 document.getElementById('filters').addEventListener('click', e=>{
@@ -435,42 +413,15 @@ document.getElementById('filters').addEventListener('click', e=>{
   render();
 });
 
-/* ---------- comunicación con Supabase ---------- */
-const SB_URL = 'https://rgybhbofsmnwsxzratex.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJneWJoYm9mc21ud3N4enJhdGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2NzcwNTIsImV4cCI6MjExMDI1MzA1Mn0.ORVlGYMNMH57GbyCc9sEUeZzNnJcygUyhyE-YQI390w';
-const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
-async function rpc(fn, args){
-  const r = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:SB_HEADERS, body:JSON.stringify(args)});
-  let j = null; try{ j = await r.json(); }catch(e){}
-  if(!r.ok){
-    const msg = (j && j.message) || ('Error '+r.status);
-    const err = new Error(msg); err.status = /Clave incorrecta/.test(msg) ? 401 : r.status; throw err;
-  }
-  return j;
-}
+/* ---------- guardar (la conexión está en comun.js) ---------- */
 async function guardarDoc(p){ await rpc('guardar_prestamo', {p_clave:clave||'', p_id:p.id, p_datos:p}); }
 function errorGuardar(e){
   console.error(e);
-  if(e && e.status===401){ salirAdmin(true); toast('La clave ya no es válida. Entra de nuevo como administrador.'); }
-  else toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
+  if(claveRechazada(e)) return;
+  toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
 }
-async function claveValida(c){ return (await rpc('verificar_clave', {p_clave:c})) === true; }
 
-/* ---------- modo administrador ---------- */
-function entrarAdmin(){
-  document.getElementById('l_clave').value=''; document.getElementById('l_error').hidden=true;
-  abrir('ovLogin'); document.getElementById('l_clave').focus();
-}
-async function enviarLogin(e){
-  e.preventDefault();
-  const c = document.getElementById('l_clave').value.trim();
-  const errEl = document.getElementById('l_error');
-  try{
-    if(!await claveValida(c)){ errEl.textContent = 'Clave incorrecta'; errEl.hidden=false; return; }
-    clave = c; lsSet('prestamos_clave', c); puedeEditar = true;
-    cerrar('ovLogin'); aplicarModo(); render(); toast('Modo administrador activado');
-  }catch(err){ errEl.textContent = err && err.status ? err.message : 'No hay conexión con el servidor.'; errEl.hidden=false; }
-}
+/* ---------- cambiar clave ---------- */
 function abrirCambioClave(){
   document.getElementById('claveForm').reset();
   document.getElementById('k_error').hidden = true;
@@ -494,13 +445,6 @@ async function cambiarClave(e){
   }catch(err){ mostrar(err && err.message ? err.message : 'No se pudo cambiar la clave. Revisa tu conexión.'); }
   finally{ btn.disabled = false; }
 }
-function salirAdmin(silencio){
-  clave = null; try{ localStorage.removeItem('prestamos_clave'); }catch(e){}
-  puedeEditar = false; aplicarModo(); render();
-  if(document.getElementById('ovDetalle').classList.contains('open') && abiertoId) verDetalle(abiertoId);
-  if(!silencio) toast('Saliste del modo administrador');
-}
-
 /* ---------- formulario ---------- */
 function abrirForm(id){
   if(!puedeEditar) return;
@@ -573,8 +517,7 @@ function verDetalle(id){
     filas += `<tr><td>${i}</td><td>${fmtF(f)}</td><td class="n">${money(c.valorCuota)}</td><td class="n">${money(cubierto)}</td><td>${est}</td></tr>`;
   }
   const abonos = (p.abonos||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
-  const telLimpio = String(p.telefono).replace(/[^\d]/g,'');
-  const msg = encodeURIComponent(
+  const wa = linkWhatsApp(p.telefono,
     `Hola ${p.nombre}, te recuerdo tu pago del préstamo. ` +
     (c.montoVencido>0.01 ? `Tienes ${money(c.montoVencido)} vencido. ` : (c.proxima?`Tu próxima cuota de ${money(c.valorCuota)} vence el ${fmtF(c.proxima)}. `:'')) +
     `Saldo pendiente: ${money(c.saldo)}. ¡Gracias!`);
@@ -602,15 +545,10 @@ function verDetalle(id){
     </div>
     ${p.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(p.notas)}</div></div>`:''}
 
-    ${(puedeEditar && c.saldo>0.01)?`
-    <div class="section">
-      <h4>Registrar abono</h4>
-      <form class="abonoform" id="abonoForm" onsubmit="agregarAbono(event)">
-        <div><label for="a_monto">Monto</label><input name="monto" id="a_monto" type="number" min="0.01" step="any" value="${(Math.round(Math.min(c.valorCuota,c.saldo)*100)/100)}" required></div>
-        <div><label for="a_fecha">Fecha</label><input name="fecha" id="a_fecha" type="date" value="${isoF(h)}" required></div>
-        <div class="nota"><label for="a_nota">Nota (opcional)</label><input name="nota" id="a_nota" placeholder="Efectivo, transferencia..."></div>
-        <button class="primary" type="submit">Abonar</button>
-      </form>
+    ${c.saldo>0.01?`
+    <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary" onclick="abonarPrestamo('${p.id}')">💵 Abonar</button>
+      ${c.montoVencido>0.01?`<button onclick="abonarPrestamo('${p.id}', ${Math.round(c.montoVencido*100)/100})">Pagó lo vencido (${money(c.montoVencido)})</button>`:''}
     </div>`:''}
 
     <div class="section">
@@ -632,22 +570,57 @@ function verDetalle(id){
 
     <div class="actions">
       ${puedeEditar?`<button class="danger" onclick="borrarPrestamo('${p.id}')">Eliminar</button>`:''}
-      ${telLimpio?`<a class="btn" href="https://wa.me/${telLimpio}?text=${msg}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+      ${wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">💬 Recordatorio por WhatsApp</a>`:''}
       ${puedeEditar?`<button class="primary" onclick="abrirForm('${p.id}')">✏ Editar / cambiar interés</button>`:''}
     </div>`;
   abrir('ovDetalle');
 }
-async function agregarAbono(e){
-  e.preventDefault();
-  const f = e.target, base = data.find(x=>x.id===abiertoId);
-  const monto = +f.elements.monto.value;
-  if(!(monto>0) || !base) return;
-  const p = {...base, abonos:[...(base.abonos||[]), {id:uid(), monto, fecha:f.elements.fecha.value, nota:f.elements.nota.value.trim()}]};
+async function registrarAbono(id, monto, fecha, nota){
+  const base = data.find(x=>x.id===id); if(!base) return false;
+  const p = {...base, abonos:[...(base.abonos||[]), {id:uid(), monto, fecha, nota}]};
   try{
     await guardarDoc(p);
     data[data.findIndex(x=>x.id===p.id)] = p;
-    render(); verDetalle(p.id); toast('Abono de '+money(monto)+' registrado');
-  }catch(err){ errorGuardar(err); }
+    render();
+    if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(p.id);
+    return true;
+  }catch(err){ errorGuardar(err); return false; }
+}
+/* Ventana de abono (la misma que en Vehículos), con recibo por WhatsApp al final */
+function abonarPrestamo(id, montoInicial){
+  const p = data.find(x=>x.id===id); if(!p) return;
+  const c = calc(p);
+  const faltaCuota = Math.min(c.saldo, (c.cuotasPagadas+1)*c.valorCuota - c.pagado);
+  const estadoTxt = c2 => c2.saldo <= 0.01
+    ? '<span style="color:var(--ok)">✓ El préstamo queda pagado por completo.</span>'
+    : `Queda debiendo <b>${money(c2.saldo)}</b> · cuotas pagadas ${c2.cuotasPagadas} de ${c2.cuotas}.` +
+      (c2.montoVencido>0.01 ? ` <span style="color:var(--danger)">Sigue con ${money(c2.montoVencido)} vencido.</span>`
+                            : c2.proxima ? ` Próxima cuota: ${fmtF(c2.proxima)}.` : '');
+  const rapidos = [];
+  if(c.montoVencido>0.01) rapidos.push([`Lo vencido · ${money(c.montoVencido)}`, c.montoVencido]);
+  if(faltaCuota>0.01 && Math.abs(faltaCuota-c.montoVencido)>0.01) rapidos.push([`Completar cuota · ${money(faltaCuota)}`, faltaCuota]);
+  rapidos.push([`Todo · ${money(c.saldo)}`, c.saldo]);
+  abrirAbono({
+    titulo: 'Abonar al préstamo',
+    resumen: `<b>${esc(p.nombre)}</b><br>Saldo pendiente <b>${money(c.saldo)}</b>` +
+      (c.montoVencido>0.01 ? ` · <span style="color:var(--danger)">vencido ${money(c.montoVencido)}</span>` : '') +
+      `<br>Cuota: ${money(c.valorCuota)} · pagadas ${c.cuotasPagadas} de ${c.cuotas}`,
+    rapidos,
+    montoInicial: montoInicial || 0,
+    previsualizar: m => 'Después del abono: ' + estadoTxt(calc({...p, abonos:[...(p.abonos||[]), {monto:m}]})),
+    guardar: (m, fecha, nota) => registrarAbono(id, m, fecha, nota),
+    recibo: (m, fecha) => {
+      const c2 = calc(data.find(x=>x.id===id));
+      return {
+        tel: p.telefono,
+        resumen: `Abono de <b>${money(m)}</b> de ${esc(p.nombre)}.<br>${estadoTxt(c2)}`,
+        texto: `Hola ${p.nombre}, recibí tu abono de ${money(m)} el ${fmtF(fecha)}. ` +
+          (c2.saldo <= 0.01 ? 'Tu préstamo quedó pagado por completo.'
+            : `Saldo pendiente: ${money(c2.saldo)}.` + (c2.proxima ? ` Próxima cuota: ${fmtF(c2.proxima)}.` : '')) +
+          ' ¡Gracias!'
+      };
+    }
+  });
 }
 async function borrarAbono(aid){
   if(!await confirmar('Borrar abono','¿Seguro que quieres borrar este abono?','Borrar')) return;
@@ -677,7 +650,8 @@ function exportar(){
   a.download = 'respaldo-prestamos-' + isoF(hoy()) + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-  toast('Respaldo descargado');
+  marcarRespaldo('prestamos');
+  toast('Copia de seguridad descargada');
 }
 async function importar(e){
   const file = e.target.files[0]; e.target.value=''; if(!file) return;
@@ -711,40 +685,32 @@ function confirmar(titulo, html, si){
 }
 function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
 function aviso(t){ const el=document.getElementById('aviso'); el.hidden=!t; el.textContent=t||''; }
-function aplicarModo(){
-  for(const id of ['btnNuevo','btnImport','btnExport','btnClave','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
-  document.getElementById('btnAdmin').hidden = puedeEditar;
-  document.getElementById('modo').hidden = puedeEditar;
-}
-
 /* ---------- carga de datos (se actualiza sola cada 10 segundos) ---------- */
 async function cargar(){
   try{
-    const r = await fetch(SB_URL+'/rest/v1/prestamos?select=id,datos,actualizado&order=id', {headers:SB_HEADERS, cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
-    const filas = await r.json();
+    const filas = await leerFilas('prestamos');
     aviso('');
     const firma = filas.map(f=>f.id+'@'+f.actualizado).join('|');
     if(firma === versionDatos && cargado) return;
     versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
     render();
     const ov = document.getElementById('ovDetalle');
-    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#abonoForm');
-    if(ov.classList.contains('open') && abiertoId && !escribiendo) verDetalle(abiertoId);
+    if(ov.classList.contains('open') && abiertoId) verDetalle(abiertoId);
   }catch(e){
+    if(claveRechazada(e)) return;
     aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
   }
 }
-async function init(){
-  aplicarModo(); render();
-  if(clave){
-    try{
-      if(await claveValida(clave)){ puedeEditar = true; aplicarModo(); } else salirAdmin(true);
-    }catch(e){}
-  }
+montarMenu('menuMas', [
+  ['⬇ Descargar copia de seguridad', exportar],
+  ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],
+  ['🔑 Cambiar clave', abrirCambioClave],
+  ['🔓 Salir en este dispositivo', () => salir()]
+]);
+iniciarAcceso('Mis Préstamos', async () => {
+  render();
   await cargar();
   setInterval(cargar, 10000);
   setInterval(render, 60*60*1000);
-}
-init();
+});
 </script>
