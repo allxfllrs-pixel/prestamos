@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Mis Vehículos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Alquiler diario de vehículos: misma estructura que Préstamos, en tono índigo */
+:root{
+  --bg:#f2f3fa; --card:#ffffff; --text:#191c33; --muted:#636884; --line:#dfe1ee; --soft:#eceefa;
+  --primary:#3438c9; --primary-2:#5b62f0; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.16);
+  --danger:#c0392b; --warn:#b7700a; --ok:#1e8e4e;
+  --chip-ok:#e3f5ea; --chip-warn:#fdf0dc; --chip-bad:#fbe5e2; --chip-done:#e7e8f0;
+  --day-pag:#2fa866; --day-parc:#e9a23b; --day-deb:#dc4a3a; --day-hoy:#9aa0c4; --day-libre:#d6d9ea;
+  --shadow:0 1px 3px rgba(20,24,60,.08); --scrim:rgba(10,12,30,.5); --toast:#191c33; --toast-text:#fff;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-head:"Space Grotesk","Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1020; --card:#181a2e; --text:#e6e8f5; --muted:#9a9fbd; --line:#2a2d48; --soft:#21233b;
+    --primary:#2a2d9a; --primary-2:#8c92ff; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.12);
+    --danger:#ef6b5b; --warn:#f0a93b; --ok:#4cc77f;
+    --chip-ok:#1d3a2a; --chip-warn:#3d2f17; --chip-bad:#42201c; --chip-done:#272a40;
+    --day-pag:#3fbf78; --day-parc:#e9a23b; --day-deb:#ef6b5b; --day-hoy:#5d6285; --day-libre:#2e3150;
+    --shadow:none; --scrim:rgba(0,0,0,.6); --toast:#e6e8f5; --toast-text:#0f1020;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1020; --card:#181a2e; --text:#e6e8f5; --muted:#9a9fbd; --line:#2a2d48; --soft:#21233b;
+  --primary:#2a2d9a; --primary-2:#8c92ff; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.12);
+  --danger:#ef6b5b; --warn:#f0a93b; --ok:#4cc77f;
+  --chip-ok:#1d3a2a; --chip-warn:#3d2f17; --chip-bad:#42201c; --chip-done:#272a40;
+  --day-pag:#3fbf78; --day-parc:#e9a23b; --day-deb:#ef6b5b; --day-hoy:#5d6285; --day-libre:#2e3150;
+  --shadow:none; --scrim:rgba(0,0,0,.6); --toast:#e6e8f5; --toast-text:#0f1020;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--f-body)}
+h1,h2,h3,h4{font-family:var(--f-head);text-wrap:balance}
+.gut{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.wrap{max-width:1100px;margin:0 auto}
+header{background:var(--primary);color:var(--on-primary);padding-block:14px}
+header .wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{margin:0;font-size:21px;flex:1;min-width:150px}
+main{padding-block:16px 40px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
+button:hover{filter:brightness(.97)}
+button:disabled{opacity:.6;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--primary-2);outline-offset:2px}
+button.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+header button{background:var(--head-btn);border-color:rgba(255,255,255,.3);color:var(--on-primary)}
+header button.primary{background:var(--on-primary);color:var(--primary);border-color:var(--on-primary);font-weight:600}
+button.danger{color:var(--danger);border-color:var(--danger);background:transparent}
+button.small{padding:4px 10px;font-size:13px}
+a.btn{display:inline-block;text-decoration:none;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
+a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3);color:var(--on-primary);text-decoration:none;font-size:18px;font-weight:700}
+.modo{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3)}
+.aviso{background:var(--chip-warn);color:var(--text);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
+.stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input{flex:1;min-width:180px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);width:100%}
+textarea{resize:vertical;min-height:60px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.veh{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow);cursor:pointer;min-width:0;display:flex;flex-direction:column}
+.veh:hover{border-color:var(--primary-2)}
+.veh .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.veh h3{margin:0;font-size:17px}
+.phone{color:var(--muted);font-size:13px}
+.auto{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:var(--soft);border-radius:8px;font-size:14px;min-width:0}
+.auto .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.placa{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-weight:700;font-size:12px;letter-spacing:.06em;border:1.5px solid currentColor;border-radius:5px;padding:1px 6px;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:10px;font-size:14px}
+.grid2 span{color:var(--muted)}
+.grid2 b{font-variant-numeric:tabular-nums}
+.chip{font-size:12px;padding:2px 8px;border-radius:20px;white-space:nowrap;font-weight:600}
+.chip.ok{background:var(--chip-ok);color:var(--ok)}
+.chip.warn{background:var(--chip-warn);color:var(--warn)}
+.chip.bad{background:var(--chip-bad);color:var(--danger)}
+.chip.done{background:var(--chip-done);color:var(--muted)}
+.dias{display:flex;gap:3px;margin-top:12px}
+.dias i{flex:1;height:8px;border-radius:3px;background:var(--day-hoy)}
+.dias i.pag{background:var(--day-pag)} .dias i.parc{background:var(--day-parc)} .dias i.deb{background:var(--day-deb)}
+.dias i.libre{background:var(--day-libre)} .dias i.na{background:transparent;outline:1px dashed var(--line);outline-offset:-1px}
+.dias i.hoy{background:transparent;outline:1.5px solid var(--day-hoy);outline-offset:-1.5px}
+.dias i.hoy.pag{background:var(--day-pag);outline:none}
+.leyenda{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.leyenda span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--c)}
+.cardfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
+.alertas{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.alertas.hay-vencidos{border-left-color:var(--danger)}
+.alertas.limpio{border-left-color:var(--ok)}
+.alertas h3{margin:0;font-size:16px}
+.alertas .sub{color:var(--muted);font-size:13px;margin-top:2px}
+.alerta{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-top:8px;background:var(--soft)}
+.alerta:hover{outline:1px solid var(--primary-2)}
+.alerta .q{font-weight:600}
+.alerta .d{font-size:13px}
+.alerta .m{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bell{position:relative}
+.bell .badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;font-weight:700}
+.overlay{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;
+  padding:max(20px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 20px max(12px, env(safe-area-inset-left, 0px));overflow:auto;z-index:10}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:14px;width:100%;max-width:760px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3);min-width:0}
+.modal.chico{max-width:420px}
+.modal h2{margin:0 0 12px;font-size:19px}
+.modal .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.form .full{grid-column:1/-1}
+.form h4{grid-column:1/-1;margin:10px 0 0;font-size:15px;padding-top:10px;border-top:1px solid var(--line)}
+.form h4:first-of-type{border-top:0;padding-top:0;margin-top:0}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+.semana{display:flex;gap:6px;flex-wrap:wrap}
+.semana label{margin:0;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text);font-size:14px}
+.semana input{width:auto;margin:0}
+.semana label:has(input:checked){background:var(--chip-bad);border-color:var(--danger);color:var(--danger)}
+.preview{grid-column:1/-1;background:var(--soft);border-radius:8px;padding:10px;font-size:14px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.section{margin-top:18px}
+.section h4{margin:0 0 8px;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px}
+.pagoform{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.info div{background:var(--soft);border-radius:8px;padding:8px 10px;min-width:0}
+.info span{display:block;font-size:12px;color:var(--muted)}
+.info b{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.destacado{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px}
+.destacado div{border:1px solid var(--line);border-radius:10px;padding:12px}
+.destacado span{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.destacado b{display:block;font-size:22px;font-variant-numeric:tabular-nums;margin-top:2px}
+.destacado small{color:var(--muted)}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);background:var(--toast);color:var(--toast-text);padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+@media (max-width:600px){
+  .form{grid-template-columns:1fr}
+  .pagoform{grid-template-columns:1fr 1fr}
+  .pagoform .nota{grid-column:1/-1}
+  .list{grid-template-columns:1fr}
+}
+</style>
+
+<header>
+  <div class="wrap gut">
+    <a class="inicio" href="./" title="Volver al inicio" aria-label="Volver al inicio">←</a>
+    <h1>Mis Vehículos</h1>
+    <span class="modo" id="modo">👁 Solo lectura</span>
+    <button id="btnAdmin" onclick="entrarAdmin()">🔒 Administrar</button>
+    <button id="btnSalir" onclick="salirAdmin()" hidden>🔓 Salir</button>
+    <button class="bell" id="bell" onclick="irAlertas()" title="Alertas">🔔<span class="badge" id="badge" hidden></span></button>
+    <button id="btnExport" onclick="exportar()" title="Descargar copia de seguridad" hidden>⬇ Respaldo</button>
+    <button id="btnImport" onclick="document.getElementById('fileImport').click()" title="Cargar copia de seguridad" hidden>⬆ Restaurar</button>
+    <input type="file" id="fileImport" accept=".json,application/json" hidden onchange="importar(event)">
+    <button class="primary" id="btnNuevo" onclick="abrirForm()" hidden>+ Nuevo alquiler</button>
+  </div>
+</header>
+
+<main class="wrap gut">
+  <div class="aviso" id="aviso" hidden></div>
+  <div class="alertas" id="alertas"></div>
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <input id="buscar" placeholder="Buscar por conductor, teléfono, placa o modelo..." oninput="render()">
+    <div class="filters" id="filters">
+      <button data-f="activos" class="on">Activos</button>
+      <button data-f="hoy">Pendiente hoy</button>
+      <button data-f="atrasados">Atrasados</button>
+      <button data-f="finalizados">Finalizados</button>
+      <button data-f="todos">Todos</button>
+    </div>
+  </div>
+  <div class="list" id="list"><div class="empty">Cargando vehículos…</div></div>
+</main>
+
+<!-- Formulario alquiler -->
+<div class="overlay" id="ovForm">
+  <div class="modal">
+    <div class="head"><h2 id="formTitle">Nuevo alquiler</h2><button class="small" onclick="cerrar('ovForm')" aria-label="Cerrar">✕</button></div>
+    <form class="form" id="vehForm" onsubmit="guardarVehiculo(event)">
+      <input type="hidden" name="id">
+      <h4>👤 Conductor</h4>
+      <div class="full"><label for="f_nombre">Nombre completo *</label><input name="nombre" id="f_nombre" required></div>
+      <div><label for="f_tel">Teléfono *</label><input name="telefono" id="f_tel" type="tel" required></div>
+      <div><label for="f_doc">Identidad / Documento</label><input name="documento" id="f_doc"></div>
+      <div><label for="f_lic">Licencia de conducir</label><input name="licencia" id="f_lic"></div>
+      <div><label for="f_uber">Cuenta / plataforma</label><input name="plataforma" id="f_uber" placeholder="Uber, InDrive..."></div>
+      <div class="full"><label for="f_dir">Dirección</label><input name="direccion" id="f_dir"></div>
+      <div><label for="f_en">Contacto de emergencia</label><input name="emergenciaNombre" id="f_en"></div>
+      <div><label for="f_et">Teléfono de emergencia</label><input name="emergenciaTel" id="f_et" type="tel"></div>
+
+      <h4>🚗 Vehículo</h4>
+      <div><label for="f_marca">Marca *</label><input name="marca" id="f_marca" required placeholder="Toyota"></div>
+      <div><label for="f_modelo">Modelo *</label><input name="modelo" id="f_modelo" required placeholder="Corolla"></div>
+      <div><label for="f_anio">Año</label><input name="anio" id="f_anio" type="number" min="1980" max="2100" step="1"></div>
+      <div><label for="f_color">Color</label><input name="color" id="f_color"></div>
+      <div><label for="f_placa">Placa *</label><input name="placa" id="f_placa" required style="text-transform:uppercase"></div>
+      <div><label for="f_chasis">Chasis / VIN</label><input name="chasis" id="f_chasis"></div>
+      <div><label for="f_km">Kilometraje al entregar</label><input name="kmInicial" id="f_km" type="number" min="0" step="1"></div>
+      <div><label for="f_dep">Depósito / garantía</label><input name="deposito" id="f_dep" type="number" min="0" step="any"></div>
+      <div><label for="f_seg">Seguro vence</label><input name="seguroVence" id="f_seg" type="date"></div>
+      <div><label for="f_mat">Matrícula / revisión vence</label><input name="matriculaVence" id="f_mat" type="date"></div>
+
+      <h4>💵 Tarifa</h4>
+      <div><label for="f_tarifa">Tarifa diaria *</label><input name="tarifa" id="f_tarifa" type="number" min="0" step="any" required oninput="preview()"></div>
+      <div><label for="f_ini">Fecha de entrega (inicio) *</label><input name="fechaInicio" id="f_ini" type="date" required oninput="preview()"></div>
+      <div id="wrapDesde" hidden><label for="f_desde">La nueva tarifa aplica desde</label><input name="tarifaDesde" id="f_desde" type="date"></div>
+      <div class="full"><label>Días que NO se cobra</label>
+        <div class="semana" id="semana" onchange="preview()"></div>
+      </div>
+      <div class="full"><label for="f_notas">Notas</label><textarea name="notas" id="f_notas" placeholder="Condiciones del contrato, estado del vehículo al entregar, acuerdos..."></textarea></div>
+      <div class="preview" id="preview">Escribe la tarifa para ver el cálculo.</div>
+      <div class="full actions">
+        <button type="button" onclick="cerrar('ovForm')">Cancelar</button>
+        <button type="submit" class="primary" id="btnGuardar">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Detalle -->
+<div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
+
+<!-- Confirmación -->
+<div class="overlay" id="ovConfirm">
+  <div class="modal chico">
+    <h2 id="cTitulo">¿Confirmar?</h2>
+    <div id="cTexto"></div>
+    <div class="actions">
+      <button id="cNo">Cancelar</button>
+      <button id="cSi" class="primary">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clave de administrador -->
+<div class="overlay" id="ovLogin">
+  <div class="modal chico">
+    <h2>Modo administrador</h2>
+    <form id="loginForm" onsubmit="enviarLogin(event)">
+      <label for="l_clave">Clave (la misma de Préstamos)</label>
+      <input id="l_clave" type="password" autocomplete="current-password" required>
+      <div id="l_error" style="color:var(--danger);font-size:13px;margin-top:6px" hidden></div>
+      <div class="actions">
+        <button type="button" onclick="cerrar('ovLogin')">Cancelar</button>
+        <button type="submit" class="primary">Entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+let data = [];
+let filtro = 'activos';
+let abiertoId = null;
+let clave = lsGet('prestamos_clave'); // misma clave que la sección Préstamos
+let puedeEditar = false, cargado = false, versionDatos = -1, sinTabla = false;
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ---------- utilidades ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const money = n => 'Lps ' + (Math.round((n||0)*100)/100).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function parseF(s){ const [y,m,d] = String(s).split('-').map(Number); return new Date(y, m-1, d); }
+function isoF(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtF(d){ if(typeof d==='string') d=parseF(d); return d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtCorta(d){ return d.toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'}); }
+function hoy(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+const difDias = (a,b) => Math.round((a-b)/86400000);
+const DIAS_SEM = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const plural = (n, s, p) => n + ' ' + (n===1 ? s : (p || s+'s'));
+const nombreAuto = v => [v.marca, v.modelo, v.anio].filter(Boolean).join(' ');
+
+/* ---------- cálculos ---------- */
+function listaTarifas(v){
+  const t = (Array.isArray(v.tarifas) && v.tarifas.length) ? v.tarifas.slice() : [{desde:v.fechaInicio, monto:+v.tarifa||0}];
+  return t.sort((a,b)=>String(a.desde).localeCompare(String(b.desde)));
+}
+function tarifaEn(tarifas, d){
+  const iso = isoF(d); let m = +tarifas[0].monto || 0;
+  for(const t of tarifas) if(String(t.desde) <= iso) m = +t.monto || 0;
+  return m;
+}
+/* Recorre día por día desde la entrega: cada día cobrable suma la tarifa.
+   Los pagos se aplican en orden a los días más antiguos. */
+function calc(v){
+  const h = hoy(), ini = parseF(v.fechaInicio);
+  const finalizado = v.estado === 'finalizado';
+  const fin = finalizado && v.fechaFin ? parseF(v.fechaFin) : null;
+  const limite = fin && fin < h ? fin : h;
+  const libres = new Set((v.diasLibres||[]).map(Number));
+  const tarifas = listaTarifas(v);
+  const pagos = v.pagos || [];
+  const pagado = pagos.reduce((s,p)=>s + (+p.monto||0), 0);
+  const tope = addDays(h, 400);
+  let cum = 0, devengado = 0, devAyer = 0, prox = null, proxFalta = 0, pagadoHasta = null, diasAtraso = 0, diasCobrados = 0;
+  const dias = new Map();
+  for(let d = new Date(ini), guard = 0; guard < 6000; guard++, d = addDays(d,1)){
+    const enPeriodo = d <= limite;
+    if(!enPeriodo && (prox || fin || d > tope)) break;
+    const cob = !libres.has(d.getDay());
+    const m = cob ? tarifaEn(tarifas, d) : 0;
+    const antes = cum; cum += m;
+    if(enPeriodo){
+      devengado += m; if(d < h) devAyer += m;
+      if(cob) diasCobrados++;
+      dias.set(isoF(d), {cob, m, antes, despues:cum});
+    }
+    if(cob && m > 0){
+      if(cum <= pagado + 0.01) pagadoHasta = new Date(d);
+      else {
+        if(!prox){ prox = new Date(d); proxFalta = cum - Math.max(antes, pagado); }
+        if(d < h) diasAtraso++;
+      }
+    }
+  }
+  const deuda = Math.max(0, devengado - pagado);
+  const vencido = Math.max(0, devAyer - pagado);
+  const aFavor = Math.max(0, pagado - devengado);
+  let estado;
+  if(finalizado) estado = deuda > 0.01 ? 'bad' : 'done';
+  else if(vencido > 0.01) estado = 'bad';
+  else if(deuda > 0.01) estado = 'warn';
+  else estado = 'ok';
+  // próximo pago: si debe algo, es hoy por todo lo que debe; si está al día, el siguiente día sin cubrir
+  let proxFecha = null, proxMonto = 0;
+  if(deuda > 0.01){ proxFecha = finalizado ? null : h; proxMonto = deuda; }
+  else if(!finalizado && prox){ proxFecha = prox; proxMonto = proxFalta; }
+  const ultimoPago = pagos.length ? pagos.map(p=>String(p.fecha)).sort().pop() : null;
+  return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox,
+          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), tarifas, dias, libres, ini, fin, ultimoPago, h};
+}
+function estadoDia(c, d){
+  const iso = isoF(d);
+  if(d < c.ini || (c.fin && d > c.fin)) return 'na';
+  const x = c.dias.get(iso);
+  if(!x) return 'na';
+  const esHoy = +d === +c.h;
+  if(!x.cob || x.m <= 0) return 'libre';
+  if(x.despues <= c.pagado + 0.01) return esHoy ? 'hoy pag' : 'pag';
+  if(x.antes < c.pagado - 0.01) return esHoy ? 'hoy parc' : 'parc';
+  return esHoy ? 'hoy' : 'deb';
+}
+function tiraDias(c, n){
+  const NOMBRES = {pag:'pagado', parc:'pago parcial', deb:'sin pagar', libre:'no se cobra', na:'sin alquiler', hoy:'hoy, pendiente', 'hoy pag':'hoy, pagado', 'hoy parc':'hoy, pago parcial'};
+  let html = '';
+  for(let i = n-1; i >= 0; i--){
+    const d = addDays(c.h, -i), e = estadoDia(c, d);
+    html += `<i class="${e}" title="${fmtCorta(d)}: ${NOMBRES[e]}"></i>`;
+  }
+  return `<div class="dias" aria-label="Últimos ${n} días">${html}</div>`;
+}
+const LEYENDA = `<div class="leyenda"><span style="--c:var(--day-pag)">Pagado</span><span style="--c:var(--day-parc)">Parcial</span><span style="--c:var(--day-deb)">Sin pagar</span><span style="--c:var(--day-libre)">No se cobra</span></div>`;
+function chip(c){
+  if(c.estado==='done') return '<span class="chip done">Finalizado ✓</span>';
+  if(c.estado==='bad') return c.fin ? '<span class="chip bad">Finalizado con deuda</span>'
+    : `<span class="chip bad">Atrasado ${plural(c.diasAtraso,'día')}</span>`;
+  if(c.estado==='warn') return '<span class="chip warn">Pendiente hoy</span>';
+  return '<span class="chip ok">Al día</span>';
+}
+function textoProx(c){
+  if(!c.proxFecha) return '—';
+  const d = difDias(c.proxFecha, c.h);
+  const cuando = d===0 ? 'Hoy' : d===1 ? 'Mañana' : fmtCorta(c.proxFecha);
+  return `${cuando} · ${money(c.proxMonto)}`;
+}
+
+/* ---------- alertas ---------- */
+function documentosPorVencer(v){
+  const res = [], h = hoy();
+  for(const [k, nom] of [['seguroVence','Seguro'],['matriculaVence','Matrícula / revisión']]){
+    if(!v[k]) continue;
+    const d = difDias(parseF(v[k]), h);
+    if(d <= 15) res.push({nom, d, f:v[k]});
+  }
+  return res;
+}
+function obtenerAlertas(){
+  const res = [];
+  for(const v of data){
+    const c = calc(v);
+    if(c.estado==='bad') res.push({v, c, tipo:'atraso', monto:c.deuda,
+      texto: c.fin ? `Alquiler finalizado con saldo pendiente` : `${plural(c.diasAtraso,'día')} sin pagar · debe desde ${fmtF(c.primerImpago || c.ini)}`});
+    if(v.estado !== 'finalizado') for(const doc of documentosPorVencer(v))
+      res.push({v, c, tipo:'doc', monto:null,
+        texto: doc.d < 0 ? `${doc.nom} vencido desde ${fmtF(doc.f)}` : doc.d===0 ? `${doc.nom} vence HOY` : `${doc.nom} vence en ${plural(doc.d,'día')} (${fmtF(doc.f)})`});
+  }
+  res.sort((a,b)=> (a.tipo===b.tipo ? 0 : a.tipo==='atraso' ? -1 : 1) || ((b.monto||0)-(a.monto||0)));
+  return res;
+}
+function renderAlertas(){
+  const box = document.getElementById('alertas');
+  const al = obtenerAlertas();
+  const atrasos = al.filter(a=>a.tipo==='atraso').length;
+  const pendHoy = data.filter(v=>calc(v).estado==='warn').length;
+  box.classList.toggle('hay-vencidos', atrasos>0);
+  box.classList.toggle('limpio', cargado && !al.length);
+  const badge = document.getElementById('badge');
+  badge.hidden = !al.length; badge.textContent = al.length;
+  document.title = (al.length ? `(${al.length}) ` : '') + 'Mis Vehículos';
+  const titulo = !cargado ? '🔔 Alertas'
+    : al.length ? (atrasos?'⚠️':'🔔')+` Alertas (${al.length})` : '✅ Todos al día';
+  const sub = cargado && pendHoy ? `<div class="sub">${plural(pendHoy,'conductor','conductores')} todavía no ha${pendHoy===1?'':'n'} pagado la tarifa de hoy.</div>` : '';
+  box.innerHTML = `<h3>${titulo}</h3>${sub}
+    ${al.map(a=>`
+      <div class="alerta" onclick="verDetalle('${a.v.id}')">
+        <div><div class="q">${esc(a.v.nombre)} · <span style="font-weight:400">${esc(nombreAuto(a.v))} <span class="placa">${esc(a.v.placa)}</span></span></div>
+          <div class="d" style="color:${a.tipo==='atraso'?'var(--danger)':'var(--warn)'}">${a.tipo==='doc'?'📄 ':''}${a.texto}</div></div>
+        ${a.monto!=null?`<div class="m" style="color:var(--danger)">${money(a.monto)}</div>`:''}
+      </div>`).join('')}`;
+}
+function irAlertas(){ document.getElementById('alertas').scrollIntoView({behavior:'smooth'}); }
+
+/* ---------- render principal ---------- */
+function render(){
+  renderAlertas();
+  const q = document.getElementById('buscar').value.trim().toLowerCase();
+  const all = data.map(v=>({v, c:calc(v)}));
+  const activos = all.filter(x=>x.v.estado!=='finalizado');
+  const h = hoy(), hIso = isoF(h), mesIso = hIso.slice(0,7);
+  let cobHoy = 0, cobMes = 0;
+  for(const v of data) for(const p of (v.pagos||[])){
+    if(p.fecha===hIso) cobHoy += +p.monto||0;
+    if(String(p.fecha).slice(0,7)===mesIso) cobMes += +p.monto||0;
+  }
+  const s = {
+    diario: activos.reduce((t,x)=>t + (x.c.libres.has(h.getDay()) ? 0 : x.c.tarifaHoy), 0),
+    deuda: all.reduce((t,x)=>t + x.c.deuda, 0),
+    atrasados: all.filter(x=>x.c.estado==='bad').length
+  };
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="l">Vehículos rentados</div><div class="v">${activos.length}</div></div>
+    <div class="stat"><div class="l">A cobrar hoy</div><div class="v">${money(s.diario)}</div></div>
+    <div class="stat"><div class="l">Cobrado hoy</div><div class="v" style="color:var(--ok)">${money(cobHoy)}</div></div>
+    <div class="stat"><div class="l">Cobrado este mes</div><div class="v">${money(cobMes)}</div></div>
+    <div class="stat"><div class="l">Deuda total</div><div class="v" style="color:${s.deuda>0.01?'var(--danger)':'inherit'}">${money(s.deuda)}</div></div>
+    <div class="stat"><div class="l">Atrasados</div><div class="v">${s.atrasados}</div></div>`;
+
+  const el = document.getElementById('list');
+  if(!cargado){ el.innerHTML = '<div class="empty">Cargando vehículos…</div>'; return; }
+  if(sinTabla){ el.innerHTML = '<div class="empty">La base de datos de vehículos todavía no está creada.<br>Ejecuta el archivo <b>vehiculos.sql</b> en Supabase &gt; SQL Editor.</div>'; return; }
+  if(!data.length){
+    el.innerHTML = puedeEditar
+      ? `<div class="empty">Aún no tienes vehículos alquilados.<br><br><button class="primary" onclick="abrirForm()">+ Registrar el primer alquiler</button></div>`
+      : '<div class="empty">Todavía no hay vehículos registrados.</div>';
+    return;
+  }
+  const lista = all.filter(({v,c})=>{
+    if(q){
+      const txt = [v.nombre, v.telefono, v.placa, v.marca, v.modelo, v.color].join(' ').toLowerCase();
+      if(!txt.includes(q)) return false;
+    }
+    if(filtro==='activos') return v.estado!=='finalizado';
+    if(filtro==='hoy') return c.estado==='warn';
+    if(filtro==='atrasados') return c.estado==='bad';
+    if(filtro==='finalizados') return v.estado==='finalizado';
+    return true;
+  });
+  const orden = {bad:0,warn:1,ok:2,done:3};
+  lista.sort((a,b)=> orden[a.c.estado]-orden[b.c.estado] || b.c.deuda-a.c.deuda || String(a.v.nombre).localeCompare(String(b.v.nombre)));
+  if(!lista.length){ el.innerHTML = '<div class="empty">No hay resultados con este filtro.</div>'; return; }
+  el.innerHTML = lista.map(({v,c})=>`
+    <div class="veh" onclick="verDetalle('${v.id}')">
+      <div class="top">
+        <div style="min-width:0"><h3>${esc(v.nombre)}</h3><div class="phone">📞 ${esc(v.telefono)}</div></div>
+        ${chip(c)}
+      </div>
+      <div class="auto"><span aria-hidden="true">🚗</span><span class="nm">${esc(nombreAuto(v))}${v.color?' · '+esc(v.color):''}</span><span class="placa">${esc(v.placa)}</span></div>
+      <div class="grid2">
+        <span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
+        <span>${c.deuda>0.01?'Debe':'Saldo a favor'}</span><b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda>0.01?c.deuda:c.aFavor)}</b>
+        <span>Próximo pago</span><b>${textoProx(c)}</b>
+        <span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
+      </div>
+      ${tiraDias(c, 14)}
+      <div class="cardfoot">
+        <span>Últimos 14 días</span>
+        ${(puedeEditar && v.estado!=='finalizado' && c.proxMonto>0.01)?`<button class="small primary" onclick="event.stopPropagation();cobrarRapido('${v.id}')">✓ Cobrar ${money(c.proxMonto)}</button>`:''}
+      </div>
+    </div>`).join('');
+}
+document.getElementById('filters').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  filtro = b.dataset.f;
+  document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('on', x===b));
+  render();
+});
+
+/* ---------- comunicación con Supabase (mismo proyecto que Préstamos) ---------- */
+const SB_URL = 'https://rgybhbofsmnwsxzratex.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJneWJoYm9mc21ud3N4enJhdGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2NzcwNTIsImV4cCI6MjExMDI1MzA1Mn0.ORVlGYMNMH57GbyCc9sEUeZzNnJcygUyhyE-YQI390w';
+const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+async function rpc(fn, args){
+  const r = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:SB_HEADERS, body:JSON.stringify(args)});
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok){
+    const msg = (j && j.message) || ('Error '+r.status);
+    const err = new Error(msg); err.status = /Clave incorrecta/.test(msg) ? 401 : r.status; throw err;
+  }
+  return j;
+}
+async function guardarDoc(v){ await rpc('guardar_vehiculo', {p_clave:clave||'', p_id:v.id, p_datos:v}); }
+function errorGuardar(e){
+  console.error(e);
+  if(e && e.status===401){ salirAdmin(true); toast('La clave ya no es válida. Entra de nuevo como administrador.'); }
+  else if(e && e.status===404) toast('Falta crear la tabla de vehículos en Supabase (archivo vehiculos.sql).');
+  else toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
+}
+async function claveValida(c){ return (await rpc('verificar_clave', {p_clave:c})) === true; }
+function reemplazar(v){ const i = data.findIndex(x=>x.id===v.id); if(i>=0) data[i]=v; else data.push(v); }
+
+/* ---------- modo administrador ---------- */
+function entrarAdmin(){
+  document.getElementById('l_clave').value=''; document.getElementById('l_error').hidden=true;
+  abrir('ovLogin'); document.getElementById('l_clave').focus();
+}
+async function enviarLogin(e){
+  e.preventDefault();
+  const c = document.getElementById('l_clave').value.trim();
+  const errEl = document.getElementById('l_error');
+  try{
+    if(!await claveValida(c)){ errEl.textContent = 'Clave incorrecta'; errEl.hidden=false; return; }
+    clave = c; lsSet('prestamos_clave', c); puedeEditar = true;
+    cerrar('ovLogin'); aplicarModo(); render(); toast('Modo administrador activado');
+  }catch(err){ errEl.textContent = err && err.status ? err.message : 'No hay conexión con el servidor.'; errEl.hidden=false; }
+}
+function salirAdmin(silencio){
+  clave = null; try{ localStorage.removeItem('prestamos_clave'); }catch(e){}
+  puedeEditar = false; aplicarModo(); render();
+  if(document.getElementById('ovDetalle').classList.contains('open') && abiertoId) verDetalle(abiertoId);
+  if(!silencio) toast('Saliste del modo administrador');
+}
+
+/* ---------- formulario ---------- */
+document.getElementById('semana').innerHTML = [1,2,3,4,5,6,0].map(n=>`<label><input type="checkbox" name="libre" value="${n}"> ${DIAS_SEM[n]}</label>`).join('');
+const CAMPOS = ['id','nombre','telefono','documento','licencia','plataforma','direccion','emergenciaNombre','emergenciaTel',
+  'marca','modelo','anio','color','placa','chasis','kmInicial','deposito','seguroVence','matriculaVence','tarifa','fechaInicio','notas'];
+function abrirForm(id){
+  if(!puedeEditar) return;
+  const f = document.getElementById('vehForm');
+  f.reset();
+  const v = id ? data.find(x=>x.id===id) : null;
+  document.getElementById('formTitle').textContent = v ? 'Editar alquiler' : 'Nuevo alquiler';
+  if(v){
+    for(const k of CAMPOS) if(f.elements[k]) f.elements[k].value = v[k] ?? '';
+    f.elements.tarifa.value = tarifaEn(listaTarifas(v), hoy());
+    const libres = new Set((v.diasLibres||[]).map(String));
+    f.querySelectorAll('input[name=libre]').forEach(x=>x.checked = libres.has(x.value));
+  } else {
+    f.elements.id.value = '';
+    f.elements.fechaInicio.value = isoF(hoy());
+    f.elements.tarifa.value = lsGet('vehiculos_tarifa') || '';
+  }
+  f.elements.tarifaDesde.value = isoF(hoy());
+  f.elements.fechaInicio.disabled = false;
+  document.getElementById('wrapDesde').hidden = true;
+  f.dataset.tarifaOriginal = v ? f.elements.tarifa.value : '';
+  preview();
+  cerrar('ovDetalle');
+  abrir('ovForm');
+  f.elements.nombre.focus();
+}
+function leerForm(){
+  const f = document.getElementById('vehForm'); const o = {};
+  for(const k of CAMPOS) o[k] = String(f.elements[k].value).trim();
+  o.tarifaDesde = f.elements.tarifaDesde.value;
+  o.diasLibres = [...f.querySelectorAll('input[name=libre]:checked')].map(x=>+x.value);
+  return o;
+}
+function preview(){
+  const f = document.getElementById('vehForm');
+  const o = leerForm();
+  const editando = !!o.id, cambio = editando && f.dataset.tarifaOriginal !== '' && +o.tarifa !== +f.dataset.tarifaOriginal;
+  document.getElementById('wrapDesde').hidden = !cambio;
+  const el = document.getElementById('preview');
+  if(!(+o.tarifa>0)){ el.textContent='Escribe la tarifa para ver el cálculo.'; return; }
+  const diasSem = 7 - o.diasLibres.length;
+  if(diasSem <= 0){ el.innerHTML = '<b style="color:var(--danger)">Marcaste todos los días como libres: no se cobraría nada.</b>'; return; }
+  el.innerHTML = `Se cobra <b>${plural(diasSem,'día')}</b> por semana${o.diasLibres.length?` (libre: ${o.diasLibres.map(n=>DIAS_SEM[n]).join(', ')})`:''}.<br>
+    Semanal: <b>${money(o.tarifa*diasSem)}</b> · Mensual aprox.: <b>${money(o.tarifa*diasSem*30/7)}</b>
+    ${cambio?'<br><span style="color:var(--warn)">El cambio de tarifa no afecta los días anteriores a la fecha que elijas.</span>':''}`;
+}
+async function guardarVehiculo(e){
+  e.preventDefault();
+  const o = leerForm();
+  if(o.diasLibres.length >= 7){ toast('Debe haber al menos un día de cobro.'); return; }
+  o.placa = o.placa.toUpperCase();
+  o.tarifa = +o.tarifa;
+  for(const k of ['anio','kmInicial','deposito']) o[k] = o[k]==='' ? '' : +o[k];
+  lsSet('vehiculos_tarifa', o.tarifa);
+  const desde = o.tarifaDesde || isoF(hoy()); delete o.tarifaDesde;
+  let v;
+  if(o.id){
+    const base = data.find(x=>x.id===o.id);
+    let tarifas = listaTarifas(base);
+    if(o.fechaInicio !== base.fechaInicio) tarifas[0] = {...tarifas[0], desde:o.fechaInicio};
+    if(o.tarifa !== tarifaEn(tarifas, parseF(desde))){
+      // las tarifas anteriores a "desde" se conservan; desde esa fecha rige la nueva
+      tarifas = tarifas.filter(t=>String(t.desde) < desde);
+      tarifas.push({desde: tarifas.length ? desde : o.fechaInicio, monto:o.tarifa});
+    }
+    v = {...base, ...o, tarifas};
+  } else {
+    v = {...o, id: uid(), tarifas:[{desde:o.fechaInicio, monto:o.tarifa}], pagos:[], estado:'activo', creado:new Date().toISOString()};
+  }
+  const btn = document.getElementById('btnGuardar'); btn.disabled = true;
+  try{
+    await guardarDoc(v);
+    cerrar('ovForm'); toast('Alquiler guardado');
+    reemplazar(v); render(); verDetalle(v.id);
+  }catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+
+/* ---------- detalle ---------- */
+function verDetalle(id){
+  const v = data.find(x=>x.id===id); if(!v){ cerrar('ovDetalle'); return; }
+  abiertoId = id;
+  const c = calc(v), h = c.h;
+  const pagos = (v.pagos||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const telLimpio = String(v.telefono).replace(/[^\d]/g,'');
+  const msg = encodeURIComponent(
+    `Hola ${v.nombre}, te escribo por la renta del vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
+    (c.deuda > 0.01 ? `Tienes pendiente ${money(c.deuda)}${c.diasAtraso?` (${plural(c.diasAtraso,'día')} de atraso)`:''}. `
+                    : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}. `) +
+    `¡Gracias!`);
+  const fila = (k, val) => val!=='' && val!=null ? `<div><span>${k}</span><b>${val}</b></div>` : '';
+  const docs = documentosPorVencer(v);
+  const finalizado = v.estado==='finalizado';
+  const sugerido = Math.round((c.proxMonto>0.01 ? c.proxMonto : c.tarifaHoy)*100)/100;
+
+  document.getElementById('detalle').innerHTML = `
+    <div class="head">
+      <div style="min-width:0"><h2 style="margin:0">${esc(v.nombre)}</h2>
+        <div class="phone">📞 <span style="user-select:all">${esc(v.telefono)}</span>${v.plataforma?' · '+esc(v.plataforma):''}</div></div>
+      <button class="small" onclick="cerrar('ovDetalle')" aria-label="Cerrar">✕</button>
+    </div>
+    <div style="margin:10px 0">${chip(c)}</div>
+
+    <div class="destacado">
+      <div><span>${c.deuda>0.01?'Debe':'Saldo a favor'}</span>
+        <b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda>0.01?c.deuda:c.aFavor)}</b>
+        <small>${c.diasAtraso?plural(c.diasAtraso,'día')+' de atraso':c.deuda>0.01?'Solo la tarifa de hoy':'Sin deuda'}</small></div>
+      <div><span>Próximo pago</span><b>${c.proxFecha?money(c.proxMonto):'—'}</b>
+        <small>${c.proxFecha?(difDias(c.proxFecha,h)===0?'Hoy':fmtCorta(c.proxFecha)):finalizado?'Alquiler finalizado':''}</small></div>
+      <div><span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
+        <small>${c.libres.size?'No se cobra: '+[...c.libres].sort().map(n=>DIAS_SEM[n]).join(', '):'Todos los días'}</small></div>
+    </div>
+
+    <div class="section">
+      <h4>Últimos 30 días</h4>
+      ${tiraDias(c, 30)}${LEYENDA}
+    </div>
+
+    <div class="section"><h4>💵 Cuenta</h4>
+      <div class="info">
+        ${fila('Entregado el', fmtF(v.fechaInicio))}
+        ${finalizado?fila('Devuelto el', v.fechaFin?fmtF(v.fechaFin):'—'):fila('Días de alquiler', difDias(h, c.ini)+1)}
+        ${fila('Días cobrados', c.diasCobrados)}
+        ${fila('Total generado', money(c.devengado))}
+        ${fila('Total pagado', `<span style="color:var(--ok)">${money(c.pagado)}</span>`)}
+        ${fila('Pagado hasta', c.pagadoHasta?fmtF(c.pagadoHasta):'—')}
+        ${fila('Último pago', c.ultimoPago?fmtF(c.ultimoPago):'—')}
+        ${v.deposito!==''&&v.deposito!=null?fila('Depósito / garantía', money(+v.deposito)):''}
+      </div>
+    </div>
+
+    <div class="section"><h4>🚗 Vehículo</h4>
+      <div class="info">
+        ${fila('Vehículo', esc(nombreAuto(v)))}
+        ${fila('Placa', `<span class="placa">${esc(v.placa)}</span>`)}
+        ${fila('Color', esc(v.color))}
+        ${fila('Chasis / VIN', esc(v.chasis))}
+        ${v.kmInicial!==''&&v.kmInicial!=null?fila('Km al entregar', (+v.kmInicial).toLocaleString('es-HN')+' km'):''}
+        ${v.seguroVence?fila('Seguro vence', `<span style="color:${docs.some(d=>d.nom==='Seguro')?'var(--warn)':'inherit'}">${fmtF(v.seguroVence)}</span>`):''}
+        ${v.matriculaVence?fila('Matrícula vence', `<span style="color:${docs.some(d=>d.nom!=='Seguro')?'var(--warn)':'inherit'}">${fmtF(v.matriculaVence)}</span>`):''}
+      </div>
+    </div>
+
+    <div class="section"><h4>👤 Conductor</h4>
+      <div class="info">
+        ${fila('Identidad', esc(v.documento))}
+        ${fila('Licencia', esc(v.licencia))}
+        ${fila('Dirección', esc(v.direccion))}
+        ${v.emergenciaNombre||v.emergenciaTel?fila('Emergencia', esc([v.emergenciaNombre, v.emergenciaTel].filter(Boolean).join(' · '))):''}
+      </div>
+    </div>
+    ${v.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(v.notas)}</div></div>`:''}
+
+    ${(puedeEditar && !(finalizado && c.deuda<=0.01))?`
+    <div class="section">
+      <h4>Registrar pago</h4>
+      <form class="pagoform" id="pagoForm" onsubmit="agregarPago(event)">
+        <div><label for="a_monto">Monto</label><input name="monto" id="a_monto" type="number" min="0.01" step="any" value="${sugerido||''}" required></div>
+        <div><label for="a_fecha">Fecha</label><input name="fecha" id="a_fecha" type="date" value="${isoF(h)}" required></div>
+        <div class="nota"><label for="a_nota">Nota (opcional)</label><input name="nota" id="a_nota" placeholder="Efectivo, transferencia..."></div>
+        <button class="primary" type="submit">Registrar</button>
+      </form>
+    </div>`:''}
+
+    <div class="section">
+      <h4>Historial de pagos (${pagos.length})</h4>
+      ${pagos.length?`<div class="tablewrap"><table>
+        <thead><tr><th>Fecha</th><th class="n">Monto</th><th>Nota</th>${puedeEditar?'<th></th>':''}</tr></thead>
+        <tbody>${pagos.map(p=>`<tr><td>${fmtF(p.fecha)}</td><td class="n">${money(+p.monto)}</td><td>${esc(p.nota)}</td>
+          ${puedeEditar?`<td class="n"><button class="small danger" onclick="borrarPago('${p.id}')">Borrar</button></td>`:''}</tr>`).join('')}</tbody>
+      </table></div>`:'<div style="color:var(--muted)">Sin pagos todavía.</div>'}
+    </div>
+
+    ${c.tarifas.length>1?`<div class="section"><h4>Cambios de tarifa</h4><div class="tablewrap"><table>
+      <thead><tr><th>Desde</th><th class="n">Tarifa diaria</th></tr></thead>
+      <tbody>${c.tarifas.map(t=>`<tr><td>${fmtF(t.desde)}</td><td class="n">${money(+t.monto)}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+
+    <div class="actions">
+      ${puedeEditar?`<button class="danger" onclick="borrarVehiculo('${v.id}')">Eliminar</button>`:''}
+      ${puedeEditar?(finalizado?`<button onclick="reactivar('${v.id}')">↺ Reactivar alquiler</button>`:`<button onclick="finalizar('${v.id}')">🏁 Finalizar alquiler</button>`):''}
+      ${telLimpio?`<a class="btn" href="https://wa.me/${telLimpio}?text=${msg}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+      ${puedeEditar?`<button class="primary" onclick="abrirForm('${v.id}')">✏ Editar / cambiar tarifa</button>`:''}
+    </div>`;
+  abrir('ovDetalle');
+}
+async function registrarPago(id, monto, fecha, nota){
+  const base = data.find(x=>x.id===id); if(!base) return false;
+  const v = {...base, pagos:[...(base.pagos||[]), {id:uid(), monto, fecha, nota}]};
+  try{
+    await guardarDoc(v); reemplazar(v); render();
+    if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(id);
+    toast('Pago de '+money(monto)+' registrado'); return true;
+  }catch(err){ errorGuardar(err); return false; }
+}
+async function agregarPago(e){
+  e.preventDefault();
+  const f = e.target, monto = +f.elements.monto.value;
+  if(!(monto>0)) return;
+  const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
+  await registrarPago(abiertoId, monto, f.elements.fecha.value, f.elements.nota.value.trim());
+  btn.disabled = false;
+}
+async function cobrarRapido(id){
+  const v = data.find(x=>x.id===id); if(!v) return;
+  const c = calc(v), monto = Math.round(c.proxMonto*100)/100;
+  if(!await confirmar('Registrar pago', `¿Registrar un pago de <b>${money(monto)}</b> de <b>${esc(v.nombre)}</b> con fecha de hoy?`, 'Registrar')) return;
+  await registrarPago(id, monto, isoF(hoy()), '');
+}
+async function borrarPago(pid){
+  if(!await confirmar('Borrar pago','¿Seguro que quieres borrar este pago?','Borrar')) return;
+  const base = data.find(x=>x.id===abiertoId); if(!base) return;
+  const v = {...base, pagos:(base.pagos||[]).filter(p=>p.id!==pid)};
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(v.id); toast('Pago borrado'); }
+  catch(err){ errorGuardar(err); }
+}
+async function finalizar(id){
+  const base = data.find(x=>x.id===id); if(!base) return;
+  if(!await confirmar('Finalizar alquiler', `¿El vehículo fue devuelto hoy (${fmtF(hoy())})? Desde mañana ya no se cobrará la tarifa a <b>${esc(base.nombre)}</b>.`, 'Finalizar')) return;
+  const v = {...base, estado:'finalizado', fechaFin:isoF(hoy())};
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(id); toast('Alquiler finalizado'); }
+  catch(err){ errorGuardar(err); }
+}
+async function reactivar(id){
+  const base = data.find(x=>x.id===id); if(!base) return;
+  if(!await confirmar('Reactivar alquiler', 'Se volverá a cobrar la tarifa diaria, incluidos los días desde que se finalizó. ¿Continuar?', 'Reactivar')) return;
+  const v = {...base, estado:'activo'}; delete v.fechaFin;
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(id); toast('Alquiler reactivado'); }
+  catch(err){ errorGuardar(err); }
+}
+async function borrarVehiculo(id){
+  const v = data.find(x=>x.id===id); if(!v) return;
+  if(!await confirmar('Eliminar alquiler',`¿Eliminar el alquiler de <b>${esc(v.nombre)}</b> (${esc(v.placa)}) con todos sus pagos? Esta acción no se puede deshacer.`,'Eliminar')) return;
+  try{
+    await rpc('borrar_vehiculo', {p_clave:clave||'', p_id:id});
+    data = data.filter(x=>x.id!==id);
+    cerrar('ovDetalle'); render(); toast('Alquiler eliminado');
+  }catch(err){ errorGuardar(err); }
+}
+
+/* ---------- respaldo ---------- */
+function exportar(){
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'respaldo-vehiculos-' + isoF(hoy()) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  toast('Respaldo descargado');
+}
+async function importar(e){
+  const file = e.target.files[0]; e.target.value=''; if(!file) return;
+  let d;
+  try{ d = JSON.parse(await file.text()); if(!Array.isArray(d)) throw 0; }
+  catch(err){ toast('El archivo no es un respaldo válido.'); return; }
+  if(!await confirmar('Restaurar respaldo',`Se cargarán <b>${d.length}</b> alquileres y se reemplazarán los que hay ahora (${data.length}). ¿Continuar?`,'Restaurar')) return;
+  toast('Cargando respaldo…');
+  try{
+    const nuevos = d.map(v=>({...v, id: (v.id && /^[A-Za-z0-9_\-]{1,64}$/.test(v.id)) ? v.id : uid(), pagos: v.pagos||[]}));
+    await rpc('restaurar_vehiculos', {p_clave:clave||'', p_lista:nuevos});
+    data = nuevos; render(); toast(`Respaldo restaurado: ${nuevos.length} alquileres`);
+  }catch(err){ errorGuardar(err); }
+}
+
+/* ---------- modales ---------- */
+function abrir(id){ document.getElementById(id).classList.add('open'); }
+function cerrar(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('mousedown', e=>{ if(e.target===o && o.id!=='ovConfirm') o.classList.remove('open'); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>{ if(o.id==='ovConfirm') document.getElementById('cNo').click(); else o.classList.remove('open'); }); });
+function confirmar(titulo, html, si){
+  return new Promise(res=>{
+    document.getElementById('cTitulo').textContent = titulo;
+    document.getElementById('cTexto').innerHTML = html;
+    const bSi = document.getElementById('cSi'), bNo = document.getElementById('cNo');
+    bSi.textContent = si || 'Sí, continuar';
+    const fin = v => { cerrar('ovConfirm'); bSi.onclick = bNo.onclick = null; res(v); };
+    bSi.onclick = () => fin(true); bNo.onclick = () => fin(false);
+    abrir('ovConfirm'); bNo.focus();
+  });
+}
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
+function aviso(t){ const el=document.getElementById('aviso'); el.hidden=!t; el.textContent=t||''; }
+function aplicarModo(){
+  for(const id of ['btnNuevo','btnImport','btnExport','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
+  document.getElementById('btnAdmin').hidden = puedeEditar;
+  document.getElementById('modo').hidden = puedeEditar;
+}
+
+/* ---------- carga de datos (se actualiza sola cada 10 segundos) ---------- */
+async function cargar(){
+  try{
+    const r = await fetch(SB_URL+'/rest/v1/vehiculos?select=id,datos,actualizado&order=id', {headers:SB_HEADERS, cache:'no-store'});
+    if(r.status===404){ sinTabla = true; cargado = true; aviso(''); render(); return; }
+    if(!r.ok) throw new Error(r.status);
+    sinTabla = false;
+    const filas = await r.json();
+    aviso('');
+    const firma = filas.map(f=>f.id+'@'+f.actualizado).join('|');
+    if(firma === versionDatos && cargado) return;
+    versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
+    render();
+    const ov = document.getElementById('ovDetalle');
+    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#pagoForm');
+    if(ov.classList.contains('open') && abiertoId && !escribiendo) verDetalle(abiertoId);
+  }catch(e){
+    aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
+  }
+}
+async function init(){
+  aplicarModo(); render();
+  if(clave){
+    try{
+      if(await claveValida(clave)){ puedeEditar = true; aplicarModo(); } else salirAdmin(true);
+    }catch(e){}
+  }
+  await cargar();
+  setInterval(cargar, 10000);
+  setInterval(render, 60*60*1000);
+}
+init();
+</script>

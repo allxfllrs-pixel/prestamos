@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Mis Préstamos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Layout: banda verde de cabecera + alertas + resumen + tarjetas de clientes; detalle en modal */
+:root{
+  --bg:#f2f5f4; --card:#ffffff; --text:#1b2622; --muted:#64736d; --line:#dde5e2; --soft:#eaf0ee;
+  --primary:#1f6f5c; --primary-2:#2a8f77; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.16);
+  --danger:#c0392b; --warn:#b7700a; --ok:#1e8e4e;
+  --chip-ok:#e3f5ea; --chip-warn:#fdf0dc; --chip-bad:#fbe5e2; --chip-done:#e6ecea;
+  --shadow:0 1px 3px rgba(20,40,34,.08); --scrim:rgba(10,20,16,.5); --toast:#1b2622; --toast-text:#fff;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-head:"Space Grotesk","Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111715; --card:#19211e; --text:#e5ece9; --muted:#93a39c; --line:#2a3531; --soft:#212b27;
+    --primary:#1b5c4c; --primary-2:#4cbf9f; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.12);
+    --danger:#ef6b5b; --warn:#f0a93b; --ok:#4cc77f;
+    --chip-ok:#1d3a2a; --chip-warn:#3d2f17; --chip-bad:#42201c; --chip-done:#26302c;
+    --shadow:none; --scrim:rgba(0,0,0,.6); --toast:#e5ece9; --toast-text:#111715;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111715; --card:#19211e; --text:#e5ece9; --muted:#93a39c; --line:#2a3531; --soft:#212b27;
+  --primary:#1b5c4c; --primary-2:#4cbf9f; --on-primary:#ffffff; --head-btn:rgba(255,255,255,.12);
+  --danger:#ef6b5b; --warn:#f0a93b; --ok:#4cc77f;
+  --chip-ok:#1d3a2a; --chip-warn:#3d2f17; --chip-bad:#42201c; --chip-done:#26302c;
+  --shadow:none; --scrim:rgba(0,0,0,.6); --toast:#e5ece9; --toast-text:#111715;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--f-body)}
+h1,h2,h3,h4{font-family:var(--f-head);text-wrap:balance}
+.gut{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.wrap{max-width:1100px;margin:0 auto}
+header{background:var(--primary);color:var(--on-primary);padding-block:14px}
+header .wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{margin:0;font-size:21px;flex:1;min-width:150px}
+main{padding-block:16px 40px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
+button:hover{filter:brightness(.97)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--primary-2);outline-offset:2px}
+button.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+header button{background:var(--head-btn);border-color:rgba(255,255,255,.3);color:var(--on-primary)}
+header button.primary{background:var(--on-primary);color:var(--primary);border-color:var(--on-primary);font-weight:600}
+button.danger{color:var(--danger);border-color:var(--danger);background:transparent}
+button.small{padding:4px 10px;font-size:13px}
+a.btn{display:inline-block;text-decoration:none;font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px}
+a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3);color:var(--on-primary);text-decoration:none;font-size:18px;font-weight:700}
+.modo{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--head-btn);border:1px solid rgba(255,255,255,.3)}
+.aviso{background:var(--chip-warn);color:var(--text);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
+.stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input{flex:1;min-width:180px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);width:100%}
+textarea{resize:vertical;min-height:60px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.loan{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow);cursor:pointer;min-width:0}
+.loan:hover{border-color:var(--primary-2)}
+.loan .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.loan h3{margin:0;font-size:17px}
+.phone{color:var(--muted);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:10px;font-size:14px}
+.grid2 span{color:var(--muted)}
+.grid2 b{font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--line);border-radius:4px;margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--primary-2)}
+.chip{font-size:12px;padding:2px 8px;border-radius:20px;white-space:nowrap;font-weight:600}
+.chip.ok{background:var(--chip-ok);color:var(--ok)}
+.chip.warn{background:var(--chip-warn);color:var(--warn)}
+.chip.bad{background:var(--chip-bad);color:var(--danger)}
+.chip.done{background:var(--chip-done);color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
+.alertas{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.alertas.hay-vencidos{border-left-color:var(--danger)}
+.alertas.limpio{border-left-color:var(--ok)}
+.alertas .ah{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.alertas h3{margin:0;font-size:16px}
+.alertas .cfg{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.alertas .cfg select{width:auto;padding:4px 6px}
+.alerta{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-top:8px;background:var(--soft)}
+.alerta:hover{outline:1px solid var(--primary-2)}
+.alerta .q{font-weight:600}
+.alerta .d{font-size:13px}
+.alerta .m{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bell{position:relative}
+.bell .badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;font-weight:700}
+.overlay{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;
+  padding:max(20px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 20px max(12px, env(safe-area-inset-left, 0px));overflow:auto;z-index:10}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:14px;width:100%;max-width:720px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3);min-width:0}
+.modal.chico{max-width:420px}
+.modal h2{margin:0 0 12px;font-size:19px}
+.modal .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.form .full{grid-column:1/-1}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+.preview{grid-column:1/-1;background:var(--soft);border-radius:8px;padding:10px;font-size:14px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.section{margin-top:18px}
+.section h4{margin:0 0 8px;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px}
+.abonoform{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.info div{background:var(--soft);border-radius:8px;padding:8px 10px}
+.info span{display:block;font-size:12px;color:var(--muted)}
+.info b{font-variant-numeric:tabular-nums}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);background:var(--toast);color:var(--toast-text);padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+@media (max-width:600px){
+  .form{grid-template-columns:1fr}
+  .abonoform{grid-template-columns:1fr 1fr}
+  .abonoform .nota{grid-column:1/-1}
+  .list{grid-template-columns:1fr}
+}
+</style>
+
+<header>
+  <div class="wrap gut">
+    <a class="inicio" href="./" title="Volver al inicio" aria-label="Volver al inicio">←</a>
+    <h1>Mis Préstamos</h1>
+    <span class="modo" id="modo">👁 Solo lectura</span>
+    <button id="btnAdmin" onclick="entrarAdmin()">🔒 Administrar</button>
+    <button id="btnClave" onclick="abrirCambioClave()" hidden>🔑 Cambiar clave</button>
+    <button id="btnSalir" onclick="salirAdmin()" hidden>🔓 Salir</button>
+    <button class="bell" id="bell" onclick="irAlertas()" title="Alertas de vencimiento">🔔<span class="badge" id="badge" hidden></span></button>
+    <button id="btnExport" onclick="exportar()" title="Descargar copia de seguridad" hidden>⬇ Respaldo</button>
+    <button id="btnImport" onclick="document.getElementById('fileImport').click()" title="Cargar copia de seguridad" hidden>⬆ Restaurar</button>
+    <input type="file" id="fileImport" accept=".json,application/json" hidden onchange="importar(event)">
+    <button class="primary" id="btnNuevo" onclick="abrirForm()" hidden>+ Nuevo préstamo</button>
+  </div>
+</header>
+
+<main class="wrap gut">
+  <div class="aviso" id="aviso" hidden></div>
+  <div class="alertas" id="alertas"></div>
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <input id="buscar" placeholder="Buscar por nombre o teléfono..." oninput="render()">
+    <div class="filters" id="filters">
+      <button data-f="todos" class="on">Todos</button>
+      <button data-f="activos">Activos</button>
+      <button data-f="atrasados">Atrasados</button>
+      <button data-f="pagados">Pagados</button>
+    </div>
+  </div>
+  <div class="list" id="list"><div class="empty">Cargando préstamos…</div></div>
+</main>
+
+<!-- Formulario préstamo -->
+<div class="overlay" id="ovForm">
+  <div class="modal">
+    <div class="head"><h2 id="formTitle">Nuevo préstamo</h2><button class="small" onclick="cerrar('ovForm')">✕</button></div>
+    <form class="form" id="loanForm" onsubmit="guardarPrestamo(event)">
+      <input type="hidden" name="id" id="f_id">
+      <div class="full"><label for="f_nombre">Nombre completo *</label><input name="nombre" id="f_nombre" required></div>
+      <div><label for="f_tel">Teléfono *</label><input name="telefono" id="f_tel" type="tel" required></div>
+      <div><label for="f_doc">Cédula / Documento</label><input name="documento" id="f_doc"></div>
+      <div class="full"><label for="f_dir">Dirección</label><input name="direccion" id="f_dir"></div>
+      <div><label for="f_cap">Monto prestado (capital) *</label><input name="capital" id="f_cap" type="number" min="1" step="any" required oninput="preview()"></div>
+      <div><label for="f_ini">Fecha de inicio *</label><input name="fechaInicio" id="f_ini" type="date" required oninput="preview()"></div>
+      <div><label for="f_tasa">Tasa de interés (%) *</label><input name="tasa" id="f_tasa" type="number" min="0" step="any" required oninput="preview()"></div>
+      <div><label for="f_tipo">Tipo de interés</label>
+        <select name="tipoInteres" id="f_tipo" onchange="preview()">
+          <option value="mensual">% mensual (se cobra por cada mes)</option>
+          <option value="total">% único sobre el total</option>
+        </select>
+      </div>
+      <div><label for="f_freq">Frecuencia de pago</label>
+        <select name="frecuencia" id="f_freq" onchange="preview()">
+          <option value="diario">Diario</option>
+          <option value="semanal">Semanal</option>
+          <option value="quincenal">Quincenal</option>
+          <option value="mensual" selected>Mensual</option>
+        </select>
+      </div>
+      <div><label for="f_cuotas">Número de cuotas *</label><input name="cuotas" id="f_cuotas" type="number" min="1" step="1" required oninput="preview()"></div>
+      <div class="full"><label for="f_notas">Notas</label><textarea name="notas" id="f_notas" placeholder="Garantía, referencias, acuerdos..."></textarea></div>
+      <div class="preview" id="preview">Completa los datos para ver el cálculo.</div>
+      <div class="full actions">
+        <button type="button" onclick="cerrar('ovForm')">Cancelar</button>
+        <button type="submit" class="primary" id="btnGuardar">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Detalle -->
+<div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
+
+<!-- Confirmación -->
+<div class="overlay" id="ovConfirm">
+  <div class="modal chico">
+    <h2 id="cTitulo">¿Confirmar?</h2>
+    <div id="cTexto"></div>
+    <div class="actions">
+      <button id="cNo">Cancelar</button>
+      <button id="cSi" class="primary">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clave de administrador -->
+<div class="overlay" id="ovLogin">
+  <div class="modal chico">
+    <h2>Modo administrador</h2>
+    <form id="loginForm" onsubmit="enviarLogin(event)">
+      <label for="l_clave">Clave</label>
+      <input id="l_clave" type="password" inputmode="numeric" autocomplete="current-password" required>
+      <div id="l_error" style="color:var(--danger);font-size:13px;margin-top:6px" hidden></div>
+      <div class="actions">
+        <button type="button" onclick="cerrar('ovLogin')">Cancelar</button>
+        <button type="submit" class="primary">Entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Cambiar clave -->
+<div class="overlay" id="ovClave">
+  <div class="modal chico">
+    <h2>Cambiar clave de administrador</h2>
+    <form id="claveForm" onsubmit="cambiarClave(event)" style="display:grid;gap:10px">
+      <div><label for="k_actual">Clave actual</label><input id="k_actual" type="password" autocomplete="current-password" required></div>
+      <div><label for="k_nueva">Clave nueva (mínimo 6 caracteres)</label><input id="k_nueva" type="password" autocomplete="new-password" minlength="6" required></div>
+      <div><label for="k_repite">Repite la clave nueva</label><input id="k_repite" type="password" autocomplete="new-password" minlength="6" required></div>
+      <div id="k_error" style="color:var(--danger);font-size:13px" hidden></div>
+      <div class="actions" style="margin-top:4px">
+        <button type="button" onclick="cerrar('ovClave')">Cancelar</button>
+        <button type="submit" class="primary" id="k_btn">Cambiar clave</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const COL = 'prestamos';
+let data = [];
+let filtro = 'todos';
+let abiertoId = null;
+let clave = lsGetSafe('prestamos_clave');
+let puedeEditar = false, cargado = false, versionDatos = -1;
+function lsGetSafe(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+
+/* ---------- almacenamiento local (solo preferencias) ---------- */
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ---------- utilidades ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const money = n => 'Lps ' + (Math.round((n||0)*100)/100).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function parseF(s){ const [y,m,d] = String(s).split('-').map(Number); return new Date(y, m-1, d); }
+function isoF(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtF(d){ if(typeof d==='string') d=parseF(d); return d.toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}); }
+function hoy(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function addMonths(d,n){
+  const r = new Date(d.getFullYear(), d.getMonth()+n, 1);
+  const last = new Date(r.getFullYear(), r.getMonth()+1, 0).getDate();
+  r.setDate(Math.min(d.getDate(), last)); return r;
+}
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+const DIAS = {diario:1, semanal:7, quincenal:15, mensual:30};
+const NOMBRE_FREQ = {diario:'Diario', semanal:'Semanal', quincenal:'Quincenal', mensual:'Mensual'};
+function fechaCuota(p, i){
+  const ini = parseF(p.fechaInicio);
+  if(p.frecuencia==='mensual') return addMonths(ini, i);
+  return addDays(ini, (DIAS[p.frecuencia]||30)*i);
+}
+
+/* ---------- cálculos ---------- */
+function diasAviso(){ const v = parseInt(lsGet('prestamos_aviso'),10); return isNaN(v) ? 3 : v; }
+function setDiasAviso(v){ lsSet('prestamos_aviso', v); render(); }
+
+function calc(p){
+  const capital = +p.capital, tasa = +p.tasa, cuotas = Math.max(1, +p.cuotas|0);
+  const meses = p.frecuencia==='mensual' ? cuotas : cuotas*(DIAS[p.frecuencia]||30)/30;
+  const interes = p.tipoInteres==='total' ? capital*tasa/100 : capital*tasa/100*meses;
+  const total = capital + interes;
+  const valorCuota = total / cuotas;
+  const pagado = (p.abonos||[]).reduce((s,a)=>s + +a.monto, 0);
+  const saldo = Math.max(0, total - pagado);
+  const cuotasPagadas = Math.min(cuotas, Math.floor((pagado + 0.01) / valorCuota));
+  const h = hoy();
+  let vencidas = 0;
+  for(let i=1;i<=cuotas;i++){ if(fechaCuota(p,i) < h) vencidas = i; else break; }
+  const montoVencido = Math.max(0, Math.min(saldo, vencidas*valorCuota - pagado));
+  const pagadoTotal = saldo <= 0.01;
+  const proxima = pagadoTotal ? null : fechaCuota(p, Math.min(cuotas, cuotasPagadas+1));
+  const diasAtraso = (montoVencido>0.01 && proxima) ? Math.round((h - proxima)/86400000) : 0;
+  const diasParaVencer = proxima ? Math.round((proxima - h)/86400000) : null;
+  let estado = 'ok';
+  if(pagadoTotal) estado='done';
+  else if(montoVencido>0.01) estado='bad';
+  else if(diasParaVencer!==null && diasParaVencer <= diasAviso()) estado='warn';
+  return {capital,tasa,cuotas,meses,interes,total,valorCuota,pagado,saldo,cuotasPagadas,
+          cuotasPendientes:cuotas-cuotasPagadas,montoVencido,proxima,diasAtraso,diasParaVencer,estado,
+          fechaFin:fechaCuota(p,cuotas)};
+}
+function chip(c){
+  if(c.estado==='done') return '<span class="chip done">Pagado ✓</span>';
+  if(c.estado==='bad') return `<span class="chip bad">Atrasado ${c.diasAtraso} día${c.diasAtraso===1?'':'s'}</span>`;
+  if(c.estado==='warn') return '<span class="chip warn">Pago próximo</span>';
+  return '<span class="chip ok">Al día</span>';
+}
+
+/* ---------- alertas ---------- */
+function obtenerAlertas(){
+  const res = [];
+  for(const p of data){
+    const c = calc(p);
+    if(c.estado==='done') continue;
+    const faltaCuota = Math.min(c.saldo, (c.cuotasPagadas+1)*c.valorCuota - c.pagado);
+    if(c.estado==='bad') res.push({p,c,tipo:'vencido',monto:c.montoVencido,
+        texto:`Vencido hace ${c.diasAtraso} día${c.diasAtraso===1?'':'s'} (desde ${fmtF(c.proxima)})`});
+    else if(c.diasParaVencer!==null && c.diasParaVencer<=diasAviso()){
+      const d = c.diasParaVencer;
+      res.push({p,c,tipo: d===0?'hoy':'pronto',monto:faltaCuota,
+        texto: d===0 ? 'Vence HOY' : d===1 ? `Vence mañana (${fmtF(c.proxima)})` : `Vence en ${d} días (${fmtF(c.proxima)})`});
+    }
+  }
+  const orden={vencido:0,hoy:1,pronto:2};
+  res.sort((a,b)=>orden[a.tipo]-orden[b.tipo] || (a.c.proxima-b.c.proxima));
+  return res;
+}
+function renderAlertas(){
+  const box = document.getElementById('alertas');
+  const al = obtenerAlertas();
+  const vencidos = al.filter(a=>a.tipo==='vencido').length;
+  box.classList.toggle('hay-vencidos', vencidos>0);
+  box.classList.toggle('limpio', cargado && !al.length);
+  const badge = document.getElementById('badge');
+  badge.hidden = !al.length; badge.textContent = al.length;
+  document.title = (al.length ? `(${al.length}) ` : '') + 'Mis Préstamos';
+  const opciones = [0,1,2,3,5,7,15].map(n=>`<option value="${n}" ${n===diasAviso()?'selected':''}>${n===0?'solo el mismo día':n+' día'+(n>1?'s':'')+' antes'}</option>`).join('');
+  const titulo = !cargado ? '🔔 Alertas de vencimiento'
+    : al.length ? (vencidos?'⚠️':'🔔')+` Alertas de vencimiento (${al.length})` : '✅ Sin vencimientos próximos';
+  box.innerHTML = `
+    <div class="ah">
+      <h3>${titulo}</h3>
+      <div class="cfg"><label for="selAviso" style="margin:0">Avisar</label> <select id="selAviso" onchange="setDiasAviso(this.value)">${opciones}</select></div>
+    </div>
+    ${al.map(a=>`
+      <div class="alerta" onclick="verDetalle('${a.p.id}')">
+        <div><div class="q">${esc(a.p.nombre)} · <span style="font-weight:400">📞 ${esc(a.p.telefono)}</span></div>
+          <div class="d" style="color:${a.tipo==='vencido'?'var(--danger)':a.tipo==='hoy'?'var(--warn)':'var(--muted)'}">${a.texto}</div></div>
+        <div class="m" style="color:${a.tipo==='vencido'?'var(--danger)':'inherit'}">${money(a.monto)}</div>
+      </div>`).join('')}`;
+}
+function irAlertas(){ document.getElementById('alertas').scrollIntoView({behavior:'smooth'}); }
+
+/* ---------- render principal ---------- */
+function render(){
+  renderAlertas();
+  const q = document.getElementById('buscar').value.trim().toLowerCase();
+  const all = data.map(p=>({p,c:calc(p)}));
+  const activos = all.filter(x=>x.c.estado!=='done');
+  const s = {
+    prestado: all.reduce((t,x)=>t+x.c.capital,0),
+    cobrar: activos.reduce((t,x)=>t+x.c.saldo,0),
+    cobrado: all.reduce((t,x)=>t+x.c.pagado,0),
+    interes: all.reduce((t,x)=>t+x.c.interes,0),
+    vencido: activos.reduce((t,x)=>t+x.c.montoVencido,0),
+    atrasados: all.filter(x=>x.c.estado==='bad').length
+  };
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="l">Total prestado</div><div class="v">${money(s.prestado)}</div></div>
+    <div class="stat"><div class="l">Por cobrar</div><div class="v">${money(s.cobrar)}</div></div>
+    <div class="stat"><div class="l">Cobrado</div><div class="v">${money(s.cobrado)}</div></div>
+    <div class="stat"><div class="l">Ganancia en intereses</div><div class="v">${money(s.interes)}</div></div>
+    <div class="stat"><div class="l">Vencido sin pagar</div><div class="v" style="color:var(--danger)">${money(s.vencido)}</div></div>
+    <div class="stat"><div class="l">Clientes</div><div class="v">${activos.length} activos · ${s.atrasados} atrasados</div></div>`;
+
+  const el = document.getElementById('list');
+  if(!cargado){ el.innerHTML = '<div class="empty">Cargando préstamos…</div>'; return; }
+  if(!data.length){
+    el.innerHTML = puedeEditar
+      ? `<div class="empty">Aún no hay préstamos aquí.<br><br>
+          Si ya tienes préstamos en la app de tu computador, descarga allí un <b>⬇ Respaldo</b> y cárgalo aquí con <b>⬆ Restaurar</b>.<br><br>
+          <button class="primary" onclick="abrirForm()">+ Agregar un préstamo</button></div>`
+      : '<div class="empty">Todavía no hay préstamos registrados.</div>';
+    return;
+  }
+  let lista = all.filter(x=>{
+    if(q && !(String(x.p.nombre).toLowerCase().includes(q) || String(x.p.telefono).includes(q))) return false;
+    if(filtro==='activos') return x.c.estado!=='done';
+    if(filtro==='atrasados') return x.c.estado==='bad';
+    if(filtro==='pagados') return x.c.estado==='done';
+    return true;
+  });
+  const orden = {bad:0,warn:1,ok:2,done:3};
+  lista.sort((a,b)=> orden[a.c.estado]-orden[b.c.estado] || (a.c.proxima||0)-(b.c.proxima||0));
+  if(!lista.length){ el.innerHTML = '<div class="empty">No hay resultados.</div>'; return; }
+  el.innerHTML = lista.map(({p,c})=>`
+    <div class="loan" onclick="verDetalle('${p.id}')">
+      <div class="top">
+        <div><h3>${esc(p.nombre)}</h3><div class="phone">📞 ${esc(p.telefono)}</div></div>
+        ${chip(c)}
+      </div>
+      <div class="grid2">
+        <span>Prestado</span><b>${money(c.capital)}</b>
+        <span>Interés</span><b>${c.tasa}% ${p.tipoInteres==='mensual'?'mensual':'único'}</b>
+        <span>Total a pagar</span><b>${money(c.total)}</b>
+        <span>Saldo pendiente</span><b>${money(c.saldo)}</b>
+        <span>Cuotas</span><b>${c.cuotasPagadas}/${c.cuotas} de ${money(c.valorCuota)}</b>
+        <span>Inicio</span><b>${fmtF(p.fechaInicio)}</b>
+        <span>${c.proxima?'Próximo pago':'Finalizado'}</span><b>${c.proxima?fmtF(c.proxima):'—'}</b>
+      </div>
+      <div class="bar"><i style="width:${Math.min(100,c.pagado/c.total*100)}%"></i></div>
+    </div>`).join('');
+}
+document.getElementById('filters').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  filtro = b.dataset.f;
+  document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('on', x===b));
+  render();
+});
+
+/* ---------- comunicación con Supabase ---------- */
+const SB_URL = 'https://rgybhbofsmnwsxzratex.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJneWJoYm9mc21ud3N4enJhdGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2NzcwNTIsImV4cCI6MjExMDI1MzA1Mn0.ORVlGYMNMH57GbyCc9sEUeZzNnJcygUyhyE-YQI390w';
+const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+async function rpc(fn, args){
+  const r = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:SB_HEADERS, body:JSON.stringify(args)});
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok){
+    const msg = (j && j.message) || ('Error '+r.status);
+    const err = new Error(msg); err.status = /Clave incorrecta/.test(msg) ? 401 : r.status; throw err;
+  }
+  return j;
+}
+async function guardarDoc(p){ await rpc('guardar_prestamo', {p_clave:clave||'', p_id:p.id, p_datos:p}); }
+function errorGuardar(e){
+  console.error(e);
+  if(e && e.status===401){ salirAdmin(true); toast('La clave ya no es válida. Entra de nuevo como administrador.'); }
+  else toast(e && e.message ? e.message : 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
+}
+async function claveValida(c){ return (await rpc('verificar_clave', {p_clave:c})) === true; }
+
+/* ---------- modo administrador ---------- */
+function entrarAdmin(){
+  document.getElementById('l_clave').value=''; document.getElementById('l_error').hidden=true;
+  abrir('ovLogin'); document.getElementById('l_clave').focus();
+}
+async function enviarLogin(e){
+  e.preventDefault();
+  const c = document.getElementById('l_clave').value.trim();
+  const errEl = document.getElementById('l_error');
+  try{
+    if(!await claveValida(c)){ errEl.textContent = 'Clave incorrecta'; errEl.hidden=false; return; }
+    clave = c; lsSet('prestamos_clave', c); puedeEditar = true;
+    cerrar('ovLogin'); aplicarModo(); render(); toast('Modo administrador activado');
+  }catch(err){ errEl.textContent = err && err.status ? err.message : 'No hay conexión con el servidor.'; errEl.hidden=false; }
+}
+function abrirCambioClave(){
+  document.getElementById('claveForm').reset();
+  document.getElementById('k_error').hidden = true;
+  abrir('ovClave'); document.getElementById('k_actual').focus();
+}
+async function cambiarClave(e){
+  e.preventDefault();
+  const actual = document.getElementById('k_actual').value;
+  const nueva = document.getElementById('k_nueva').value;
+  const repite = document.getElementById('k_repite').value;
+  const errEl = document.getElementById('k_error');
+  const mostrar = t => { errEl.textContent = t; errEl.hidden = false; };
+  if(nueva.length < 6) return mostrar('La clave nueva debe tener al menos 6 caracteres.');
+  if(nueva !== repite) return mostrar('Las dos claves nuevas no coinciden.');
+  if(nueva === actual) return mostrar('La clave nueva es igual a la actual.');
+  const btn = document.getElementById('k_btn'); btn.disabled = true;
+  try{
+    await rpc('cambiar_clave', {p_clave:actual, p_nueva:nueva});
+    clave = nueva; lsSet('prestamos_clave', nueva);
+    cerrar('ovClave'); toast('Clave cambiada. Usa la nueva clave desde ahora.');
+  }catch(err){ mostrar(err && err.message ? err.message : 'No se pudo cambiar la clave. Revisa tu conexión.'); }
+  finally{ btn.disabled = false; }
+}
+function salirAdmin(silencio){
+  clave = null; try{ localStorage.removeItem('prestamos_clave'); }catch(e){}
+  puedeEditar = false; aplicarModo(); render();
+  if(document.getElementById('ovDetalle').classList.contains('open') && abiertoId) verDetalle(abiertoId);
+  if(!silencio) toast('Saliste del modo administrador');
+}
+
+/* ---------- formulario ---------- */
+function abrirForm(id){
+  if(!puedeEditar) return;
+  const f = document.getElementById('loanForm');
+  f.reset();
+  const p = id ? data.find(x=>x.id===id) : null;
+  document.getElementById('formTitle').textContent = p ? 'Editar préstamo' : 'Nuevo préstamo';
+  if(p){
+    for(const k of ['id','nombre','telefono','documento','direccion','capital','fechaInicio','tasa','tipoInteres','frecuencia','cuotas','notas'])
+      if(f.elements[k]) f.elements[k].value = p[k] ?? '';
+  } else {
+    f.elements.id.value = '';
+    f.elements.fechaInicio.value = isoF(hoy());
+    f.elements.tasa.value = lsGet('prestamos_tasa') || 10;
+    f.elements.cuotas.value = 1;
+  }
+  preview();
+  cerrar('ovDetalle');
+  abrir('ovForm');
+  f.elements.nombre.focus();
+}
+function leerForm(){
+  const f = document.getElementById('loanForm'); const o = {};
+  for(const el of f.elements) if(el.name) o[el.name] = el.value.trim();
+  return o;
+}
+function preview(){
+  const o = leerForm();
+  const el = document.getElementById('preview');
+  if(!(+o.capital>0) || o.tasa==='' || !(+o.cuotas>0) || !o.fechaInicio){ el.textContent='Completa los datos para ver el cálculo.'; return; }
+  const c = calc({...o, abonos:[]});
+  el.innerHTML = `Interés: <b>${money(c.interes)}</b> · Total a pagar: <b>${money(c.total)}</b><br>
+    ${c.cuotas} cuota${c.cuotas>1?'s':''} (${NOMBRE_FREQ[o.frecuencia].toLowerCase()}) de <b>${money(c.valorCuota)}</b>
+    · Primer pago: <b>${fmtF(fechaCuota(o,1))}</b> · Último: <b>${fmtF(c.fechaFin)}</b>`;
+}
+async function guardarPrestamo(e){
+  e.preventDefault();
+  const o = leerForm();
+  o.capital = +o.capital; o.tasa = +o.tasa; o.cuotas = parseInt(o.cuotas,10);
+  lsSet('prestamos_tasa', o.tasa);
+  let p;
+  if(o.id){ p = {...data.find(x=>x.id===o.id), ...o}; }
+  else { p = {...o, id: uid(), abonos: [], creado: new Date().toISOString()}; }
+  const btn = document.getElementById('btnGuardar'); btn.disabled = true;
+  try{
+    await guardarDoc(p);
+    cerrar('ovForm'); toast('Préstamo guardado');
+    const i = data.findIndex(x=>x.id===p.id); if(i>=0) data[i]=p; else data.push(p);
+    render(); verDetalle(p.id);
+  }catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+
+/* ---------- detalle ---------- */
+function verDetalle(id){
+  const p = data.find(x=>x.id===id); if(!p){ cerrar('ovDetalle'); return; }
+  abiertoId = id;
+  const c = calc(p);
+  const h = hoy();
+  let acumulado = c.pagado, filas = '';
+  for(let i=1;i<=c.cuotas;i++){
+    const f = fechaCuota(p,i);
+    const cubierto = Math.max(0, Math.min(c.valorCuota, acumulado));
+    acumulado -= cubierto;
+    let est;
+    if(cubierto >= c.valorCuota-0.01) est='<span class="chip done">Pagada</span>';
+    else if(f < h) est = `<span class="chip bad">Vencida${cubierto>0?' (parcial)':''}</span>`;
+    else if(cubierto>0) est='<span class="chip warn">Parcial</span>';
+    else est='<span class="chip ok">Pendiente</span>';
+    filas += `<tr><td>${i}</td><td>${fmtF(f)}</td><td class="n">${money(c.valorCuota)}</td><td class="n">${money(cubierto)}</td><td>${est}</td></tr>`;
+  }
+  const abonos = (p.abonos||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const telLimpio = String(p.telefono).replace(/[^\d]/g,'');
+  const msg = encodeURIComponent(
+    `Hola ${p.nombre}, te recuerdo tu pago del préstamo. ` +
+    (c.montoVencido>0.01 ? `Tienes ${money(c.montoVencido)} vencido. ` : (c.proxima?`Tu próxima cuota de ${money(c.valorCuota)} vence el ${fmtF(c.proxima)}. `:'')) +
+    `Saldo pendiente: ${money(c.saldo)}. ¡Gracias!`);
+
+  document.getElementById('detalle').innerHTML = `
+    <div class="head">
+      <div style="min-width:0"><h2 style="margin:0">${esc(p.nombre)}</h2>
+        <div class="phone">📞 <span style="user-select:all">${esc(p.telefono)}</span>${p.documento?' · Doc: '+esc(p.documento):''}${p.direccion?' · '+esc(p.direccion):''}</div></div>
+      <button class="small" onclick="cerrar('ovDetalle')">✕</button>
+    </div>
+    <div style="margin:10px 0">${chip(c)}</div>
+    <div class="info">
+      <div><span>Capital prestado</span><b>${money(c.capital)}</b></div>
+      <div><span>Tasa de interés</span><b>${c.tasa}% ${p.tipoInteres==='mensual'?'mensual':'único'}</b></div>
+      <div><span>Interés total</span><b>${money(c.interes)}</b></div>
+      <div><span>Total a pagar</span><b>${money(c.total)}</b></div>
+      <div><span>Total abonado</span><b style="color:var(--ok)">${money(c.pagado)}</b></div>
+      <div><span>Saldo pendiente</span><b>${money(c.saldo)}</b></div>
+      <div><span>Valor cuota (${(NOMBRE_FREQ[p.frecuencia]||'').toLowerCase()})</span><b>${money(c.valorCuota)}</b></div>
+      <div><span>Cuotas pagadas / pendientes</span><b>${c.cuotasPagadas} / ${c.cuotasPendientes}</b></div>
+      <div><span>Fecha de inicio</span><b>${fmtF(p.fechaInicio)}</b></div>
+      <div><span>Fecha final</span><b>${fmtF(c.fechaFin)}</b></div>
+      <div><span>Próximo pago</span><b>${c.proxima?fmtF(c.proxima):'—'}</b></div>
+      <div><span>Vencido sin pagar</span><b style="color:${c.montoVencido>0.01?'var(--danger)':'inherit'}">${money(c.montoVencido)}</b></div>
+    </div>
+    ${p.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(p.notas)}</div></div>`:''}
+
+    ${(puedeEditar && c.saldo>0.01)?`
+    <div class="section">
+      <h4>Registrar abono</h4>
+      <form class="abonoform" id="abonoForm" onsubmit="agregarAbono(event)">
+        <div><label for="a_monto">Monto</label><input name="monto" id="a_monto" type="number" min="0.01" step="any" value="${(Math.round(Math.min(c.valorCuota,c.saldo)*100)/100)}" required></div>
+        <div><label for="a_fecha">Fecha</label><input name="fecha" id="a_fecha" type="date" value="${isoF(h)}" required></div>
+        <div class="nota"><label for="a_nota">Nota (opcional)</label><input name="nota" id="a_nota" placeholder="Efectivo, transferencia..."></div>
+        <button class="primary" type="submit">Abonar</button>
+      </form>
+    </div>`:''}
+
+    <div class="section">
+      <h4>Historial de abonos (${abonos.length})</h4>
+      ${abonos.length?`<div class="tablewrap"><table>
+        <thead><tr><th>Fecha</th><th class="n">Monto</th><th>Nota</th>${puedeEditar?'<th></th>':''}</tr></thead>
+        <tbody>${abonos.map(a=>`<tr><td>${fmtF(a.fecha)}</td><td class="n">${money(+a.monto)}</td><td>${esc(a.nota)}</td>
+          ${puedeEditar?`<td class="n"><button class="small danger" onclick="borrarAbono('${a.id}')">Borrar</button></td>`:''}</tr>`).join('')}</tbody>
+      </table></div>`:'<div style="color:var(--muted)">Sin abonos todavía.</div>'}
+    </div>
+
+    <div class="section">
+      <h4>Plan de cuotas</h4>
+      <div class="tablewrap"><table>
+        <thead><tr><th>#</th><th>Fecha</th><th class="n">Cuota</th><th class="n">Pagado</th><th>Estado</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>
+    </div>
+
+    <div class="actions">
+      ${puedeEditar?`<button class="danger" onclick="borrarPrestamo('${p.id}')">Eliminar</button>`:''}
+      ${telLimpio?`<a class="btn" href="https://wa.me/${telLimpio}?text=${msg}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+      ${puedeEditar?`<button class="primary" onclick="abrirForm('${p.id}')">✏ Editar / cambiar interés</button>`:''}
+    </div>`;
+  abrir('ovDetalle');
+}
+async function agregarAbono(e){
+  e.preventDefault();
+  const f = e.target, base = data.find(x=>x.id===abiertoId);
+  const monto = +f.elements.monto.value;
+  if(!(monto>0) || !base) return;
+  const p = {...base, abonos:[...(base.abonos||[]), {id:uid(), monto, fecha:f.elements.fecha.value, nota:f.elements.nota.value.trim()}]};
+  try{
+    await guardarDoc(p);
+    data[data.findIndex(x=>x.id===p.id)] = p;
+    render(); verDetalle(p.id); toast('Abono de '+money(monto)+' registrado');
+  }catch(err){ errorGuardar(err); }
+}
+async function borrarAbono(aid){
+  if(!await confirmar('Borrar abono','¿Seguro que quieres borrar este abono?','Borrar')) return;
+  const base = data.find(x=>x.id===abiertoId); if(!base) return;
+  const p = {...base, abonos:(base.abonos||[]).filter(a=>a.id!==aid)};
+  try{
+    await guardarDoc(p);
+    data[data.findIndex(x=>x.id===p.id)] = p;
+    render(); verDetalle(p.id); toast('Abono borrado');
+  }catch(err){ errorGuardar(err); }
+}
+async function borrarPrestamo(id){
+  const p = data.find(x=>x.id===id); if(!p) return;
+  if(!await confirmar('Eliminar préstamo',`¿Eliminar el préstamo de <b>${esc(p.nombre)}</b>? Esta acción no se puede deshacer.`,'Eliminar')) return;
+  try{
+    await rpc('borrar_prestamo', {p_clave:clave||'', p_id:id});
+    data = data.filter(x=>x.id!==id);
+    cerrar('ovDetalle'); render(); toast('Préstamo eliminado');
+  }catch(err){ errorGuardar(err); }
+}
+
+/* ---------- respaldo ---------- */
+function exportar(){
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'respaldo-prestamos-' + isoF(hoy()) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  toast('Respaldo descargado');
+}
+async function importar(e){
+  const file = e.target.files[0]; e.target.value=''; if(!file) return;
+  let d;
+  try{ d = JSON.parse(await file.text()); if(!Array.isArray(d)) throw 0; }
+  catch(err){ toast('El archivo no es un respaldo válido.'); return; }
+  if(!await confirmar('Restaurar respaldo',`Se cargarán <b>${d.length}</b> préstamos y se reemplazarán los que hay ahora (${data.length}). ¿Continuar?`,'Restaurar')) return;
+  toast('Cargando respaldo…');
+  try{
+    const nuevos = d.map(p=>({...p, id: (p.id && /^[A-Za-z0-9_\-]{1,64}$/.test(p.id)) ? p.id : uid(), abonos: p.abonos||[]}));
+    await rpc('restaurar_prestamos', {p_clave:clave||'', p_lista:nuevos});
+    data = nuevos; render(); toast(`Respaldo restaurado: ${nuevos.length} préstamos`);
+  }catch(err){ errorGuardar(err); }
+}
+
+/* ---------- modales ---------- */
+function abrir(id){ document.getElementById(id).classList.add('open'); }
+function cerrar(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('mousedown', e=>{ if(e.target===o && o.id!=='ovConfirm') o.classList.remove('open'); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>{ if(o.id==='ovConfirm') document.getElementById('cNo').click(); else o.classList.remove('open'); }); });
+function confirmar(titulo, html, si){
+  return new Promise(res=>{
+    document.getElementById('cTitulo').textContent = titulo;
+    document.getElementById('cTexto').innerHTML = html;
+    const bSi = document.getElementById('cSi'), bNo = document.getElementById('cNo');
+    bSi.textContent = si || 'Sí, continuar';
+    const fin = v => { cerrar('ovConfirm'); bSi.onclick = bNo.onclick = null; res(v); };
+    bSi.onclick = () => fin(true); bNo.onclick = () => fin(false);
+    abrir('ovConfirm'); bNo.focus();
+  });
+}
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
+function aviso(t){ const el=document.getElementById('aviso'); el.hidden=!t; el.textContent=t||''; }
+function aplicarModo(){
+  for(const id of ['btnNuevo','btnImport','btnExport','btnClave','btnSalir']) document.getElementById(id).hidden = !puedeEditar;
+  document.getElementById('btnAdmin').hidden = puedeEditar;
+  document.getElementById('modo').hidden = puedeEditar;
+}
+
+/* ---------- carga de datos (se actualiza sola cada 10 segundos) ---------- */
+async function cargar(){
+  try{
+    const r = await fetch(SB_URL+'/rest/v1/prestamos?select=id,datos,actualizado&order=id', {headers:SB_HEADERS, cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    const filas = await r.json();
+    aviso('');
+    const firma = filas.map(f=>f.id+'@'+f.actualizado).join('|');
+    if(firma === versionDatos && cargado) return;
+    versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
+    render();
+    const ov = document.getElementById('ovDetalle');
+    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#abonoForm');
+    if(ov.classList.contains('open') && abiertoId && !escribiendo) verDetalle(abiertoId);
+  }catch(e){
+    aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
+  }
+}
+async function init(){
+  aplicarModo(); render();
+  if(clave){
+    try{
+      if(await claveValida(clave)){ puedeEditar = true; aplicarModo(); } else salirAdmin(true);
+    }catch(e){}
+  }
+  await cargar();
+  setInterval(cargar, 10000);
+  setInterval(render, 60*60*1000);
+}
+init();
+</script>
