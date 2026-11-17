@@ -95,6 +95,7 @@ textarea{resize:vertical;min-height:60px}
 .dias i.hoy.pag{background:var(--day-pag);outline:none}
 .leyenda{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .leyenda span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--c)}
+.cardfoot .botones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .cardfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
 .alertas{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -130,6 +131,8 @@ th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .tablewrap{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px}
+.rapidos{display:flex;gap:6px;flex-wrap:wrap}
+.rapidos button{padding:4px 10px;font-size:13px}
 .pagoform{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end}
 .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
 .info div{background:var(--soft);border-radius:8px;padding:8px 10px;min-width:0}
@@ -216,6 +219,27 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 
 <!-- Detalle -->
 <div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
+
+<!-- Abono a la deuda -->
+<div class="overlay" id="ovAbono">
+  <div class="modal chico">
+    <div class="head"><h2 id="abTitulo">Abonar a la deuda</h2><button class="small" onclick="cerrar('ovAbono')" aria-label="Cerrar">✕</button></div>
+    <div id="abDeuda" class="preview" style="margin-bottom:12px"></div>
+    <form id="abonoForm" onsubmit="guardarAbono(event)" style="display:grid;gap:10px">
+      <div><label for="ab_monto">¿Cuánto abona?</label><input id="ab_monto" type="number" min="0.01" step="any" required oninput="previewAbono()" style="font-size:20px;font-weight:700"></div>
+      <div class="rapidos" id="abRapidos"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="ab_fecha">Fecha</label><input id="ab_fecha" type="date" required></div>
+        <div><label for="ab_nota">Nota (opcional)</label><input id="ab_nota" placeholder="Efectivo..."></div>
+      </div>
+      <div id="abResultado" class="preview"></div>
+      <div class="actions" style="margin-top:0">
+        <button type="button" onclick="cerrar('ovAbono')">Cancelar</button>
+        <button type="submit" class="primary" id="abBtn">Registrar abono</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Confirmación -->
 <div class="overlay" id="ovConfirm">
@@ -470,7 +494,8 @@ function render(){
       <div class="auto"><span aria-hidden="true">🚗</span><span class="nm">${esc(nombreAuto(v))}${v.color?' · '+esc(v.color):''}</span><span class="placa">${esc(v.placa)}</span></div>
       <div class="grid2">
         <span>Tarifa diaria</span><b>${money(c.tarifaHoy)}</b>
-        <span>${c.deuda>0.01?'Debe':'Saldo a favor'}</span><b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda>0.01?c.deuda:c.aFavor)}</b>
+        ${c.aFavor>0.01?`<span>Saldo a favor</span><b style="color:var(--ok)">${money(c.aFavor)}</b>`
+          :`<span>Debe</span><b style="color:${c.deuda>0.01?(c.estado==='bad'?'var(--danger)':'var(--warn)'):'var(--ok)'}">${money(c.deuda)}</b>`}
         ${c.diasDebe.length?`<span>Días que debe</span><b style="font-weight:600">${rangosDias(c.diasDebe)}</b>`:''}
         <span>Próximo pago</span><b>${textoProx(c)}</b>
         <span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
@@ -478,7 +503,10 @@ function render(){
       ${tiraDias(c, 14)}
       <div class="cardfoot">
         <span>Últimos 14 días</span>
-        ${(puedeEditar && v.estado!=='finalizado' && c.proxMonto>0.01)?`<button class="small primary" onclick="event.stopPropagation();cobrarRapido('${v.id}')">✓ Cobrar ${money(c.proxMonto)}</button>`:''}
+        ${puedeEditar && !(v.estado==='finalizado' && c.deuda<=0.01) ? `<span class="botones">
+          <button class="small" onclick="event.stopPropagation();abrirAbono('${v.id}')">💵 ${c.deuda>0.01?'Abonar':'Adelantar pago'}</button>
+          ${c.deuda>0.01?`<button class="small primary" onclick="event.stopPropagation();cobrarRapido('${v.id}')">✓ Pagó todo</button>`:''}
+        </span>`:''}
       </div>
     </div>`).join('');
 }
@@ -638,7 +666,6 @@ function verDetalle(id){
   const fila = (k, val) => val!=='' && val!=null ? `<div><span>${k}</span><b>${val}</b></div>` : '';
   const docs = documentosPorVencer(v);
   const finalizado = v.estado==='finalizado';
-  const sugerido = Math.round((c.proxMonto>0.01 ? c.proxMonto : c.tarifaHoy)*100)/100;
 
   document.getElementById('detalle').innerHTML = `
     <div class="head">
@@ -702,14 +729,9 @@ function verDetalle(id){
     ${v.notas?`<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(v.notas)}</div></div>`:''}
 
     ${(puedeEditar && !(finalizado && c.deuda<=0.01))?`
-    <div class="section">
-      <h4>Registrar pago</h4>
-      <form class="pagoform" id="pagoForm" onsubmit="agregarPago(event)">
-        <div><label for="a_monto">Monto</label><input name="monto" id="a_monto" type="number" min="0.01" step="any" value="${sugerido||''}" required></div>
-        <div><label for="a_fecha">Fecha</label><input name="fecha" id="a_fecha" type="date" value="${isoF(h)}" required></div>
-        <div class="nota"><label for="a_nota">Nota (opcional)</label><input name="nota" id="a_nota" placeholder="Efectivo, transferencia..."></div>
-        <button class="primary" type="submit">Registrar</button>
-      </form>
+    <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary" onclick="abrirAbono('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
+      ${c.deuda>0.01?`<button onclick="cobrarRapido('${v.id}')">✓ Pagó todo (${money(c.deuda)})</button>`:''}
     </div>`:''}
 
     <div class="section">
@@ -739,21 +761,55 @@ async function registrarPago(id, monto, fecha, nota){
   try{
     await guardarDoc(v); reemplazar(v); render();
     if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(id);
-    toast('Pago de '+money(monto)+' registrado'); return true;
+    toast('Abono de '+money(monto)+' registrado'); return true;
   }catch(err){ errorGuardar(err); return false; }
 }
-async function agregarPago(e){
+let abonoId = null;
+function abrirAbono(id){
+  const v = data.find(x=>x.id===id); if(!v || !puedeEditar) return;
+  abonoId = id;
+  const c = calc(v);
+  const debe = c.deuda > 0.01;
+  document.getElementById('abTitulo').textContent = debe ? 'Abonar a la deuda' : 'Adelantar pago';
+  document.getElementById('abDeuda').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>` +
+    (debe ? `Debe <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(c.diasDebe.length,'día')}: ${rangosDias(c.diasDebe)}.`
+          : `<span style="color:var(--ok)">No debe nada</span>${c.pagadoHasta?` · pagado hasta el ${fmtF(c.pagadoHasta)}`:''}.`);
+  const r2 = n => Math.round(n*100)/100;
+  const opciones = debe
+    ? [[`Todo · ${money(c.deuda)}`, r2(c.deuda)], ...(c.deuda > c.tarifaHoy*2 ? [[`La mitad · ${money(c.deuda/2)}`, r2(c.deuda/2)]] : []), [`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy]]
+    : [[`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy], [`1 semana · ${money(c.tarifaHoy*7)}`, c.tarifaHoy*7]];
+  document.getElementById('abRapidos').innerHTML = opciones.map(([t,m])=>`<button type="button" onclick="document.getElementById('ab_monto').value=${m};previewAbono()">${t}</button>`).join('');
+  document.getElementById('ab_monto').value = '';
+  document.getElementById('ab_fecha').value = isoF(hoy());
+  document.getElementById('ab_nota').value = '';
+  previewAbono();
+  abrir('ovAbono');
+  document.getElementById('ab_monto').focus();
+}
+function previewAbono(){
+  const v = data.find(x=>x.id===abonoId); if(!v) return;
+  const el = document.getElementById('abResultado');
+  const monto = +document.getElementById('ab_monto').value;
+  if(!(monto > 0)){ el.textContent = 'Escribe el monto para ver cómo queda la cuenta.'; return; }
+  const c = calc({...v, pagos:[...(v.pagos||[]), {monto}]});
+  el.innerHTML = c.deuda > 0.01
+    ? `Después del abono queda debiendo <b style="color:var(--danger)">${money(c.deuda)}</b> de ${plural(c.diasDebe.length,'día')}: ${rangosDias(c.diasDebe)}.`
+    : `<span style="color:var(--ok)">✓ Queda al día</span>${c.pagadoHasta?`, pagado hasta el <b>${fmtF(c.pagadoHasta)}</b>`:''}${c.aFavor>0.01?` · saldo a favor <b>${money(c.aFavor)}</b>`:''}.`;
+}
+async function guardarAbono(e){
   e.preventDefault();
-  const f = e.target, monto = +f.elements.monto.value;
-  if(!(monto>0)) return;
-  const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
-  await registrarPago(abiertoId, monto, f.elements.fecha.value, f.elements.nota.value.trim());
+  const monto = +document.getElementById('ab_monto').value;
+  if(!(monto > 0) || !abonoId) return;
+  const btn = document.getElementById('abBtn'); btn.disabled = true;
+  const ok = await registrarPago(abonoId, monto, document.getElementById('ab_fecha').value, document.getElementById('ab_nota').value.trim());
   btn.disabled = false;
+  if(ok) cerrar('ovAbono');
 }
 async function cobrarRapido(id){
   const v = data.find(x=>x.id===id); if(!v) return;
-  const c = calc(v), monto = Math.round(c.proxMonto*100)/100;
-  if(!await confirmar('Registrar pago', `¿Registrar un pago de <b>${money(monto)}</b> de <b>${esc(v.nombre)}</b> con fecha de hoy?`, 'Registrar')) return;
+  const c = calc(v), monto = Math.round(c.deuda*100)/100;
+  if(!(monto > 0)) return;
+  if(!await confirmar('Pagó todo', `¿<b>${esc(v.nombre)}</b> pagó toda la deuda de <b>${money(monto)}</b> hoy? Quedará al día.`, 'Sí, registrar')) return;
   await registrarPago(id, monto, isoF(hoy()), '');
 }
 async function borrarPago(pid){
@@ -849,7 +905,7 @@ async function cargar(){
     versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
     render();
     const ov = document.getElementById('ovDetalle');
-    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#pagoForm');
+    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest('#ovAbono');
     if(ov.classList.contains('open') && abiertoId && !escribiendo) verDetalle(abiertoId);
   }catch(e){
     aviso(cargado ? 'Sin conexión: los datos pueden no estar actualizados.' : 'No se pudo conectar con la base de datos. Revisa tu conexión a internet.');
