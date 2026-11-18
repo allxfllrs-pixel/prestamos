@@ -232,7 +232,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <div class="head"><h2 id="cgTitulo">Agregar</h2><button class="small" onclick="cerrar('ovCargo')" aria-label="Cerrar">✕</button></div>
     <form id="cargoForm" onsubmit="guardarCargo(event)" style="display:grid;gap:10px">
       <div><label for="cg_desc" id="cgDescLabel">¿Qué fue?</label><input id="cg_desc" required minlength="3" autocomplete="off"></div>
-      <div class="rapidos" id="cgRapidos"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label for="cg_monto">Precio (Lps)</label><input id="cg_monto" type="number" min="0" step="any" required style="font-weight:700"></div>
         <div><label for="cg_fecha">Fecha</label><input id="cg_fecha" type="date" required></div>
@@ -771,10 +770,8 @@ async function registrarPago(id, monto, fecha, nota){
    Cada registro: {id, tipo:'dano'|'mant', fecha, desc, monto, cobrar (lo paga el motorista), pagado, fechaPago}.
    Lo que paga el motorista queda "pendiente" hasta marcarlo pagado. No se mezcla con la tarifa diaria. */
 const TIPOS_CARGO = {
-  dano: {titulo:'🚗💥 Daño del vehículo', icono:'💥', nombre:'Daño', cobrar:true, pregunta:'¿Qué se dañó?',
-         rapidos:['Parachoques delantero','Parachoques trasero','Vidrio','Focos','Retrovisor','Llanta','Rin','Puerta','Pintura / rayón']},
-  mant: {titulo:'🔧 Mantenimiento', icono:'🔧', nombre:'Mantenimiento', cobrar:false, pregunta:'¿Qué se le hizo?',
-         rapidos:['Cambio de aceite','Bujías','Frenos','Filtro de aire','Llantas','Batería','Alineación y balanceo','Afinado']}
+  dano: {titulo:'🚗💥 Daño del vehículo', icono:'💥', nombre:'Daño', cobrar:true, pregunta:'¿Qué se dañó?'},
+  mant: {titulo:'🔧 Mantenimiento', icono:'🔧', nombre:'Mantenimiento', cobrar:false, pregunta:'¿Qué se le hizo?'}
 };
 let cargoCtx = null;
 function nuevoCargo(id, tipo){
@@ -786,7 +783,6 @@ function nuevoCargo(id, tipo){
   document.getElementById('cg_monto').value = '';
   document.getElementById('cg_fecha').value = isoF(hoy());
   document.getElementById('cg_cobrar').checked = t.cobrar;
-  document.getElementById('cgRapidos').innerHTML = t.rapidos.map(r=>`<button type="button" onclick="document.getElementById('cg_desc').value=this.textContent;document.getElementById('cg_monto').focus()">${r}</button>`).join('');
   abrir('ovCargo');
   document.getElementById('cg_desc').focus();
 }
