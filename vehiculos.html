@@ -116,6 +116,9 @@ textarea{resize:vertical;min-height:60px}
 .leyenda span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--c)}
 .rapidos{display:flex;gap:6px;flex-wrap:wrap}
 .rapidos button{padding:4px 10px;font-size:13px}
+.check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:14px;cursor:pointer;margin:0}
+.check input{width:auto;margin:0}
+.cargos td{vertical-align:middle}
 .libres{display:flex;gap:6px;flex-wrap:wrap}
 .libres span{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:20px;padding:3px 4px 3px 10px;font-size:13px}
 .libres button{padding:2px 8px;font-size:12px;border-radius:20px}
@@ -222,6 +225,26 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 
 <!-- Detalle -->
 <div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
+
+<!-- Daño o mantenimiento -->
+<div class="overlay" id="ovCargo">
+  <div class="modal chico">
+    <div class="head"><h2 id="cgTitulo">Agregar</h2><button class="small" onclick="cerrar('ovCargo')" aria-label="Cerrar">✕</button></div>
+    <form id="cargoForm" onsubmit="guardarCargo(event)" style="display:grid;gap:10px">
+      <div><label for="cg_desc" id="cgDescLabel">¿Qué fue?</label><input id="cg_desc" required minlength="3" autocomplete="off"></div>
+      <div class="rapidos" id="cgRapidos"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="cg_monto">Precio (Lps)</label><input id="cg_monto" type="number" min="0" step="any" required style="font-weight:700"></div>
+        <div><label for="cg_fecha">Fecha</label><input id="cg_fecha" type="date" required></div>
+      </div>
+      <label class="check"><input type="checkbox" id="cg_cobrar"> <span id="cgCobrarTxt">Lo paga el motorista</span></label>
+      <div class="actions" style="margin-top:0">
+        <button type="button" onclick="cerrar('ovCargo')">Cancelar</button>
+        <button type="submit" class="primary" id="cgBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Día libre -->
 <div class="overlay" id="ovLibre">
@@ -370,7 +393,8 @@ function calc(v){
   else if(!finalizado && prox){ proxFecha = prox; proxMonto = proxFalta; }
   const ultimoPago = pagos.length ? pagos.map(p=>String(p.fecha)).sort().pop() : null;
   return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox, diasDebe,
-          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), libreHoy: libres.has(isoF(h)), libres, tarifas, dias, ini, fin, ultimoPago, h};
+          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), libreHoy: libres.has(isoF(h)), libres, tarifas, dias, ini, fin, ultimoPago, h,
+          cargosPend: (v.cargos||[]).filter(x=>x.cobrar && !x.pagado).reduce((t,x)=>t + (+x.monto||0), 0)};
 }
 function estadoDia(c, d){
   const iso = isoF(d);
@@ -487,6 +511,7 @@ function render(){
           :`<span>Debe</span><b style="color:${colorDeuda(c)}">${money(c.deuda)}</b>`}
         ${c.diasDebe.length?`<span>Días</span><b style="font-weight:600">${rangosDias(c.diasDebe)}</b>`:''}
         <span>Pagado hasta</span><b>${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</b>
+        ${c.cargosPend>0.01?`<span>🔧 Daños/cargos</span><b style="color:var(--danger)">${money(c.cargosPend)}</b>`:''}
       </div>
       ${tiraDias(c, 14)}
       <div class="cardfoot">
@@ -627,6 +652,7 @@ function verDetalle(id){
     `Hola ${v.nombre}, te escribo por la renta del vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
     (c.deuda > 0.01 ? `Tienes pendiente ${money(c.deuda)} de ${plural(c.diasDebe.length,'día')} (${rangosDias(c.diasDebe)}). `
                     : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}. `) +
+    textoCargosWhatsApp(v, c.deuda > 0.01) +
     `¡Gracias!`);
   const fila = (k, val) => val!=='' && val!=null ? `<div><span>${k}</span><b>${val}</b></div>` : '';
   const finalizado = v.estado==='finalizado';
@@ -689,6 +715,16 @@ function verDetalle(id){
       ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Día libre</button>`:''}
     </div>`:''}
 
+    <div class="section">
+      <h4 style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>🔧 Daños y mantenimiento${c.cargosPend>0.01?` · <span style="color:var(--danger)">pendiente ${money(c.cargosPend)}</span>`:''}</span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="small" onclick="nuevoCargo('${v.id}','dano')">+ Daño</button>
+          <button class="small" onclick="nuevoCargo('${v.id}','mant')">+ Mantenimiento</button>
+        </span></h4>
+      ${tablaCargos(v)}
+    </div>
+
     ${(v.diasLibresFechas||[]).length?`<div class="section">
       <h4>🌴 Días libres (${v.diasLibresFechas.length})</h4>
       <div class="libres">${v.diasLibresFechas.slice().sort().reverse().map(f=>`<span>${parseF(f).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})}
@@ -731,6 +767,86 @@ async function registrarPago(id, monto, fecha, nota){
     return true;
   }catch(err){ errorGuardar(err); return false; }
 }
+/* ---------- daños y mantenimiento ----------
+   Cada registro: {id, tipo:'dano'|'mant', fecha, desc, monto, cobrar (lo paga el motorista), pagado, fechaPago}.
+   Lo que paga el motorista queda "pendiente" hasta marcarlo pagado. No se mezcla con la tarifa diaria. */
+const TIPOS_CARGO = {
+  dano: {titulo:'🚗💥 Daño del vehículo', icono:'💥', nombre:'Daño', cobrar:true, pregunta:'¿Qué se dañó?',
+         rapidos:['Parachoques delantero','Parachoques trasero','Vidrio','Focos','Retrovisor','Llanta','Rin','Puerta','Pintura / rayón']},
+  mant: {titulo:'🔧 Mantenimiento', icono:'🔧', nombre:'Mantenimiento', cobrar:false, pregunta:'¿Qué se le hizo?',
+         rapidos:['Cambio de aceite','Bujías','Frenos','Filtro de aire','Llantas','Batería','Alineación y balanceo','Afinado']}
+};
+let cargoCtx = null;
+function nuevoCargo(id, tipo){
+  const t = TIPOS_CARGO[tipo]; cargoCtx = {id, tipo};
+  document.getElementById('cgTitulo').textContent = t.titulo;
+  document.getElementById('cgDescLabel').textContent = t.pregunta;
+  document.getElementById('cg_desc').value = '';
+  document.getElementById('cg_desc').placeholder = tipo==='dano' ? 'Ej: Parachoques delantero' : 'Ej: Cambio de aceite';
+  document.getElementById('cg_monto').value = '';
+  document.getElementById('cg_fecha').value = isoF(hoy());
+  document.getElementById('cg_cobrar').checked = t.cobrar;
+  document.getElementById('cgRapidos').innerHTML = t.rapidos.map(r=>`<button type="button" onclick="document.getElementById('cg_desc').value=this.textContent;document.getElementById('cg_monto').focus()">${r}</button>`).join('');
+  abrir('ovCargo');
+  document.getElementById('cg_desc').focus();
+}
+async function guardarCargo(e){
+  e.preventDefault();
+  const base = data.find(x=>x.id===cargoCtx.id); if(!base) return;
+  const desc = document.getElementById('cg_desc').value.trim();
+  if(desc.length < 3){ toast('Escribe qué fue (por ejemplo: Parachoques).'); return; }
+  const cargo = {id:uid(), tipo:cargoCtx.tipo, fecha:document.getElementById('cg_fecha').value, desc: desc.charAt(0).toUpperCase()+desc.slice(1),
+                 monto:+document.getElementById('cg_monto').value||0, cobrar:document.getElementById('cg_cobrar').checked, pagado:false};
+  const v = {...base, cargos:[...(base.cargos||[]), cargo]};
+  const btn = document.getElementById('cgBtn'); btn.disabled = true;
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(v.id); cerrar('ovCargo'); toast(TIPOS_CARGO[cargo.tipo].nombre + ' guardado'); }
+  catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+async function cambiarCargo(vid, cid, cambio){
+  const base = data.find(x=>x.id===vid); if(!base) return;
+  const cg = (base.cargos||[]).find(x=>x.id===cid); if(!cg) return;
+  if(cambio==='borrar' && !await confirmar('Borrar registro', `¿Borrar "${esc(cg.desc)}" (${money(+cg.monto)})?`, 'Borrar')) return;
+  if(cambio==='pagado' && !await confirmar('Marcar pagado', `¿${esc(base.nombre)} pagó "${esc(cg.desc)}" por ${money(+cg.monto)}?`, 'Sí, pagó')) return;
+  const cargos = cambio==='borrar' ? base.cargos.filter(x=>x.id!==cid)
+    : base.cargos.map(x=>x.id!==cid ? x : (cambio==='pagado' ? {...x, pagado:true, fechaPago:isoF(hoy())} : {...x, pagado:false, fechaPago:undefined}));
+  const v = {...base, cargos};
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(vid); toast(cambio==='borrar'?'Registro borrado':cambio==='pagado'?'Marcado como pagado':'Marcado como pendiente'); }
+  catch(err){ errorGuardar(err); }
+}
+function tablaCargos(v){
+  const lista = (v.cargos||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  if(!lista.length) return '<div style="color:var(--muted)">Sin daños ni mantenimientos registrados.</div>';
+  return `<div class="tablewrap"><table class="cargos">
+    <thead><tr><th>Fecha</th><th>Qué fue</th><th class="n">Precio</th><th>Quién paga</th><th></th></tr></thead>
+    <tbody>${lista.map(x=>`<tr>
+      <td>${fmtF(x.fecha)}</td>
+      <td>${TIPOS_CARGO[x.tipo]?.icono||''} ${esc(x.desc)}</td>
+      <td class="n">${money(+x.monto)}</td>
+      <td>${!x.cobrar ? '<span class="chip done">Dueño</span>'
+            : x.pagado ? `<span class="chip ok" title="Pagado el ${x.fechaPago?fmtF(x.fechaPago):''}">Pagado ✓</span>`
+            : '<span class="chip bad">Motorista · pendiente</span>'}</td>
+      <td class="n" style="white-space:nowrap">
+        ${x.cobrar && !x.pagado ? `<button class="small primary" onclick="cambiarCargo('${v.id}','${x.id}','pagado')">Pagó</button>` : ''}
+        ${x.cobrar && x.pagado ? `<button class="small" onclick="cambiarCargo('${v.id}','${x.id}','pendiente')" title="Volver a pendiente">↺</button>` : ''}
+        <button class="small danger" onclick="cambiarCargo('${v.id}','${x.id}','borrar')">Borrar</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+/* Texto para el recordatorio de WhatsApp: daños pendientes + mantenimiento de los últimos 30 días */
+function textoCargosWhatsApp(v, yaDebe){
+  const cargos = v.cargos || [];
+  const pend = cargos.filter(x=>x.cobrar && !x.pagado);
+  const desde = isoF(addDays(hoy(), -30));
+  const mant = cargos.filter(x=>x.tipo==='mant' && !(x.cobrar && !x.pagado) && String(x.fecha) >= desde);
+  let t = '';
+  if(pend.length){
+    const total = pend.reduce((s,x)=>s + (+x.monto||0), 0);
+    t += `${yaDebe?'Además tienes':'Tienes'} pendiente por daños/cargos ${money(total)}: ` + pend.map(x=>`${x.desc} ${money(+x.monto)} (${fmtF(x.fecha)})`).join('; ') + '. ';
+  }
+  if(mant.length) t += `Mantenimiento reciente del vehículo: ` + mant.map(x=>`${x.desc} ${money(+x.monto)} (${fmtF(x.fecha)})`).join('; ') + '. ';
+  return t;
+}
+
 /* ---------- día libre: un día (el que sea) en que no se cobra la tarifa ---------- */
 let libreId = null;
 const lunesDe = d => addDays(d, -((d.getDay()+6)%7));   // semana de lunes a domingo
