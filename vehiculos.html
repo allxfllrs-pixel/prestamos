@@ -66,6 +66,22 @@ a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-ra
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
 .stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.hoy{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.hoy .cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hoy h3{margin:0;font-size:17px}
+.hoy .meta{color:var(--muted);font-size:13px}
+.hoy .barra{height:10px;background:var(--line);border-radius:6px;margin:10px 0 4px;overflow:hidden}
+.hoy .barra i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.hoy .nums{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
+.hoy .nums b{font-variant-numeric:tabular-nums}
+.hoy-fila{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.hoy-fila:first-of-type{margin-top:10px}
+.hoy-fila .q{font-weight:600;cursor:pointer}
+.hoy-fila .sub{font-size:13px;color:var(--muted)}
+.hoy-fila .btns{display:flex;gap:6px;flex-wrap:wrap}
+.hoy .listo{margin-top:10px;color:var(--ok);font-weight:600}
+.hoy details{margin-top:8px;font-size:14px}
+.hoy summary{cursor:pointer;color:var(--muted)}
 .stat .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .toolbar input{flex:1;min-width:180px}
@@ -156,7 +172,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <main class="wrap gut">
   <div class="aviso" id="aviso" hidden></div>
   <div id="respaldoAviso" hidden></div>
-  <div class="stats" id="stats"></div>
+  <div class="hoy" id="hoy" hidden></div>
   <div class="toolbar">
     <input id="buscar" placeholder="Buscar por conductor, teléfono, placa o modelo..." oninput="render()">
     <div class="filters" id="filters">
@@ -362,6 +378,44 @@ function chip(c){
 const colorDeuda = c => c.deuda > 0.01 ? (c.estado==='bad' ? 'var(--danger)' : 'var(--warn)') : 'var(--ok)';
 
 /* ---------- render principal ---------- */
+/* ---------- cobro de hoy ----------
+   Cada día se suma la tarifa sola. Un conductor está "cubierto hoy" cuando lo pagado alcanza hasta hoy.
+   Los pagos cubren primero los días más viejos, así que si debe días anteriores, pagar la tarifa de hoy
+   cubre el día más viejo que debe. El panel se reinicia solo cada día porque todo se calcula por fecha. */
+function renderHoy(activos, cobHoy, deudaTotal){
+  const box = document.getElementById('hoy');
+  if(!cargado || !activos.length){ box.hidden = true; return; }
+  box.hidden = false;
+  const esperado = activos.reduce((t,x)=>t + x.c.tarifaHoy, 0);
+  const pendientes = activos.filter(x=>x.c.deuda > 0.01)
+    .sort((a,b)=> b.c.diasDebe.length - a.c.diasDebe.length || String(a.v.nombre).localeCompare(String(b.v.nombre)));
+  const cubiertos = activos.filter(x=>x.c.deuda <= 0.01);
+  const pct = esperado > 0 ? Math.min(100, cobHoy / esperado * 100) : 0;
+  const fecha = hoy().toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
+  const fila = ({v,c}) => {
+    const atrasado = c.deuda - c.tarifaHoy;   // lo que debe de días anteriores
+    return `<div class="hoy-fila">
+      <div style="min-width:0">
+        <div class="q" onclick="verDetalle('${v.id}')">${esc(v.nombre)} <span class="placa">${esc(v.placa)}</span></div>
+        <div class="sub">Hoy: ${money(Math.min(c.tarifaHoy, c.deuda))}${atrasado > 0.01 ? ` · <span style="color:var(--danger)">atrasado ${money(atrasado)} (${plural(c.diasDebe.length-1,'día')})</span>` : ''}</div>
+      </div>
+      <div class="btns">
+        <button class="small primary" onclick="abonar('${v.id}','dia')">✓ Pagó hoy · ${money(c.tarifaHoy)}</button>
+        ${atrasado > 0.01 ? `<button class="small" onclick="abonar('${v.id}',true)">Pagó todo · ${money(c.deuda)}</button>` : ''}
+      </div>
+    </div>`;
+  };
+  box.innerHTML = `
+    <div class="cab"><h3>📅 Cobro de hoy</h3><span class="meta">${fecha[0].toUpperCase()+fecha.slice(1)}</span></div>
+    <div class="barra" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+    <div class="nums">
+      <span>Cobrado hoy <b style="color:var(--ok)">${money(cobHoy)}</b> · tarifas del día <b>${money(esperado)}</b></span>
+      <span>${cubiertos.length} de ${activos.length} al día${deudaTotal>0.01?` · deuda total <b style="color:var(--danger)">${money(deudaTotal)}</b>`:''}</span>
+    </div>
+    ${pendientes.length ? pendientes.map(fila).join('') : '<div class="listo">✅ Todos pagaron hoy.</div>'}
+    ${cubiertos.length && pendientes.length ? `<details><summary>Ya pagaron hoy (${cubiertos.length})</summary>
+      ${cubiertos.map(({v,c})=>`<div class="sub" style="padding:4px 0">✓ ${esc(v.nombre)} — pagado hasta el ${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</div>`).join('')}</details>` : ''}`;
+}
 function render(){
   const q = document.getElementById('buscar').value.trim().toLowerCase();
   const all = data.map(v=>({v, c:calc(v)}));
@@ -369,14 +423,10 @@ function render(){
   const hIso = isoF(hoy());
   let cobHoy = 0;
   for(const v of data) for(const p of (v.pagos||[])) if(p.fecha===hIso) cobHoy += +p.monto||0;
-  const porCobrar = activos.reduce((t,x)=>t + x.c.tarifaHoy, 0);
   const deuda = all.reduce((t,x)=>t + x.c.deuda, 0);
   const deben = all.filter(x=>x.c.deuda>0.01).length;
   document.title = (deben ? `(${deben}) ` : '') + 'Mis Vehículos';
-  document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="l">Por cobrar hoy</div><div class="v">${money(porCobrar)}</div><div class="phone">${plural(activos.length,'vehículo')}</div></div>
-    <div class="stat"><div class="l">Cobrado hoy</div><div class="v" style="color:var(--ok)">${money(cobHoy)}</div></div>
-    <div class="stat"><div class="l">Deuda total</div><div class="v" style="color:${deuda>0.01?'var(--danger)':'inherit'}">${money(deuda)}</div><div class="phone">${deben ? plural(deben,'conductor','conductores')+(deben===1?' debe':' deben') : 'Nadie debe'}</div></div>`;
+  renderHoy(activos, cobHoy, deuda);
   revisarRespaldo('vehiculos', data.length > 0, exportar);
 
   const el = document.getElementById('list');
@@ -663,7 +713,7 @@ function abonar(id, todo){
     rapidos: debe
       ? [[`Todo · ${money(c.deuda)}`, c.deuda], ...(c.deuda > c.tarifaHoy*2 ? [[`La mitad · ${money(c.deuda/2)}`, c.deuda/2]] : []), [`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy]]
       : [[`1 día · ${money(c.tarifaHoy)}`, c.tarifaHoy], [`1 semana · ${money(c.tarifaHoy*7)}`, c.tarifaHoy*7]],
-    montoInicial: todo ? c.deuda : 0,
+    montoInicial: todo === 'dia' ? c.tarifaHoy : todo ? c.deuda : 0,
     previsualizar: m => 'Después del abono: ' + estadoTxt(despues(m)),
     guardar: (m, fecha, nota) => registrarPago(id, m, fecha, nota),
     recibo: (m, fecha) => {
