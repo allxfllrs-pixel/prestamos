@@ -66,22 +66,22 @@ a.inicio{display:inline-grid;place-items:center;width:36px;height:36px;border-ra
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow)}
 .stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-.hoy{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
-.hoy .cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
-.hoy h3{margin:0;font-size:17px}
-.hoy .meta{color:var(--muted);font-size:13px}
-.hoy .barra{height:10px;background:var(--line);border-radius:6px;margin:10px 0 4px;overflow:hidden}
-.hoy .barra i{display:block;height:100%;background:var(--ok);border-radius:6px}
-.hoy .nums{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
-.hoy .nums b{font-variant-numeric:tabular-nums}
+.cobrohoy{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.cobrohoy .cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.cobrohoy h3{margin:0;font-size:17px}
+.cobrohoy .meta{color:var(--muted);font-size:13px}
+.cobrohoy .barra{height:10px;background:var(--line);border-radius:6px;margin:10px 0 4px;overflow:hidden}
+.cobrohoy .barra i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.cobrohoy .nums{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
+.cobrohoy .nums b{font-variant-numeric:tabular-nums}
 .hoy-fila{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .hoy-fila:first-of-type{margin-top:10px}
 .hoy-fila .q{font-weight:600;cursor:pointer}
 .hoy-fila .sub{font-size:13px;color:var(--muted)}
 .hoy-fila .btns{display:flex;gap:6px;flex-wrap:wrap}
-.hoy .listo{margin-top:10px;color:var(--ok);font-weight:600}
-.hoy details{margin-top:8px;font-size:14px}
-.hoy summary{cursor:pointer;color:var(--muted)}
+.cobrohoy .listo{margin-top:10px;color:var(--ok);font-weight:600}
+.cobrohoy details{margin-top:8px;font-size:14px}
+.cobrohoy summary{cursor:pointer;color:var(--muted)}
 .stat .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .toolbar input{flex:1;min-width:180px}
@@ -177,7 +177,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <main class="wrap gut">
   <div class="aviso" id="aviso" hidden></div>
   <div id="respaldoAviso" hidden></div>
-  <div class="hoy" id="hoy" hidden></div>
+  <div class="cobrohoy" id="hoy" hidden></div>
   <div class="toolbar">
     <input id="buscar" placeholder="Buscar por conductor, teléfono, placa o modelo..." oninput="render()">
     <div class="filters" id="filters">
