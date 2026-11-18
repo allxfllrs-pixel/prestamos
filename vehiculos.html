@@ -619,7 +619,7 @@ function verDetalle(id){
       ${pagos.length?`<div class="tablewrap"><table>
         <thead><tr><th>Fecha</th><th class="n">Monto</th><th>Nota</th>${puedeEditar?'<th></th>':''}</tr></thead>
         <tbody>${pagos.map(p=>`<tr><td>${fmtF(p.fecha)}</td><td class="n">${money(+p.monto)}</td><td>${esc(p.nota)}</td>
-          ${puedeEditar?`<td class="n"><button class="small danger" onclick="borrarPago('${p.id}')">Borrar</button></td>`:''}</tr>`).join('')}</tbody>
+          <td class="n" style="white-space:nowrap">${reciboViejo(v, c, p)}<button class="small danger" onclick="borrarPago('${p.id}')">Borrar</button></td></tr>`).join('')}</tbody>
       </table></div>`:'<div style="color:var(--muted)">Sin pagos todavía.</div>'}
     </div>
 
@@ -634,6 +634,12 @@ function verDetalle(id){
       ${puedeEditar?`<button class="primary" onclick="abrirForm('${v.id}')">✏ Editar / cambiar tarifa</button>`:''}
     </div>`;
   abrir('ovDetalle');
+}
+/* Botón 💬 para mandar otra vez el recibo de un pago anterior (con la cuenta de hoy) */
+function reciboViejo(v, c, p){
+  const url = linkWhatsApp(v.telefono, `Hola ${v.nombre}, este es el recibo de tu pago de ${money(+p.monto)} del ${fmtF(p.fecha)} por el vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
+    (c.deuda > 0.01 ? `Saldo pendiente hoy: ${money(c.deuda)} (${rangosDias(c.diasDebe)}).` : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}.`) + ' ¡Gracias!');
+  return url ? `<a class="btn small" style="padding:4px 10px;font-size:13px;margin-right:6px" href="${url}" target="_blank" rel="noopener" title="Enviar recibo por WhatsApp">💬 Recibo</a>` : '';
 }
 async function registrarPago(id, monto, fecha, nota){
   const base = data.find(x=>x.id===id); if(!base) return false;
@@ -772,6 +778,7 @@ prepararCampoTel(document.getElementById('f_tel'));
 montarMenu('menuMas', [
   ['⬇ Descargar copia de seguridad', exportar],
   ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],
+  ['🕘 Copias automáticas', () => verCopiasAuto('vehiculos')],
   ['🔓 Salir en este dispositivo', () => salir()]
 ]);
 iniciarAcceso('Mis Vehículos', async () => {

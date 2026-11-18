@@ -21,7 +21,8 @@ async function rpc(fn, args){
             : (j && typeof j==='object' && !Array.isArray(j) && j.error) ? j.error : null;
   if(msg){
     const err = new Error(msg);
-    err.status = /clave/i.test(msg) && !/Demasiados/.test(msg) ? 401 : (r.ok ? 400 : r.status);
+    // 401 solo cuando la base de datos dice que la clave es incorrecta (no por errores que mencionan "p_clave")
+    err.status = /clave (actual )?es incorrecta|^clave incorrecta/i.test(msg) ? 401 : (r.ok ? 400 : r.status);
     throw err;
   }
   return j;
@@ -139,6 +140,57 @@ function revisarRespaldo(seccion, hayDatos, exportar){
   el.innerHTML = `<span>📦 ${dias===null ? 'Todavía no has descargado una copia de seguridad.' : `Hace ${dias} días que no descargas una copia de seguridad.`} Guárdala por si algo se borra.</span>
     <button class="small primary" type="button">⬇ Descargar ahora</button>`;
   el.querySelector('button').onclick = () => el._exportar && el._exportar();
+}
+
+/* ---------- copias automáticas (las guarda Supabase cada noche, 30 días) ---------- */
+/* seccion: 'prestamos' o 'vehiculos'. Descarga la copia elegida en el mismo formato que "Descargar copia de seguridad". */
+async function verCopiasAuto(seccion){
+  let ov = document.getElementById('ovCopias');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.className = 'overlay'; ov.id = 'ovCopias';
+    ov.innerHTML = `<div class="modal chico">
+      <div class="head"><h2>Copias automáticas</h2><button class="small" type="button" data-cerrar aria-label="Cerrar">✕</button></div>
+      <div id="copiasCuerpo"></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', e=>{ if(e.target === ov) ov.classList.remove('open'); });
+    ov.querySelector('[data-cerrar]').onclick = () => ov.classList.remove('open');
+  }
+  const cuerpo = ov.querySelector('#copiasCuerpo');
+  cuerpo.innerHTML = '<p style="color:var(--muted)">Cargando…</p>';
+  ov.classList.add('open');
+  const nombre = seccion === 'prestamos' ? 'préstamos' : 'vehículos';
+  try{
+    const copias = (await rpc('listar_respaldos_auto', {p_clave: clave||''})).copias || [];
+    if(!copias.length){ cuerpo.innerHTML = '<p>Todavía no hay copias. La primera se guarda esta noche.</p>'; return; }
+    cuerpo.innerHTML = `<p style="color:var(--muted);font-size:14px;margin-top:0">Cada noche se guarda una copia sola y se conservan 30 días.
+        Para volver a una copia: descárgala y luego usa <b>⋯ → Restaurar copia de seguridad</b>.</p>
+      <div class="tablewrap"><table><thead><tr><th>Fecha</th><th class="n">${nombre[0].toUpperCase()+nombre.slice(1)}</th><th></th></tr></thead>
+      <tbody>${copias.map(c=>`<tr><td>${new Date(c.fecha).toLocaleString('es',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})}</td>
+        <td class="n">${c[seccion]}</td><td class="n"><button class="small" type="button" data-id="${c.id}">⬇ Descargar</button></td></tr>`).join('')}</tbody></table></div>`;
+    cuerpo.querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try{
+        const r = await rpc('obtener_respaldo_auto', {p_clave: clave||'', p_id: +b.dataset.id});
+        const blob = new Blob([JSON.stringify(r[seccion] || [], null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `copia-automatica-${seccion}-${String(r.fecha).slice(0,10)}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+      }catch(e){ if(!claveRechazada(e)) alertaCopias(cuerpo, e); }
+      finally{ b.disabled = false; }
+    });
+  }catch(e){
+    if(claveRechazada(e)) return;
+    cuerpo.innerHTML = '';
+    alertaCopias(cuerpo, e);
+  }
+}
+function alertaCopias(cuerpo, e){
+  cuerpo.insertAdjacentHTML('afterbegin', e && e.status === 404
+    ? '<p class="aviso">Las copias automáticas todavía no están activadas. Falta ejecutar <b>respaldo_auto.sql</b> en Supabase.</p>'
+    : `<p class="aviso">${e && e.message ? e.message : 'No hay conexión.'}</p>`);
 }
 
 /* ---------- teléfono de Honduras (+504) ---------- */
