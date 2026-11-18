@@ -97,6 +97,10 @@ textarea{resize:vertical;min-height:60px}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .form .full{grid-column:1/-1}
 label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+.check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:14px;cursor:pointer;margin:0}
+.check input{width:auto;margin:0}
+.fechas{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
+.fechas label{margin-bottom:2px}
 .preview{grid-column:1/-1;background:var(--soft);border-radius:8px;padding:10px;font-size:14px}
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 .section{margin-top:18px}
@@ -171,7 +175,11 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
           <option value="mensual" selected>Mensual</option>
         </select>
       </div>
-      <div><label for="f_cuotas">Número de cuotas *</label><input name="cuotas" id="f_cuotas" type="number" min="1" step="1" required oninput="preview()"></div>
+      <div><label for="f_cuotas">Número de cuotas *</label><input name="cuotas" id="f_cuotas" type="number" min="1" step="1" required oninput="armarFechas();preview()"></div>
+      <div class="full" id="bloqueFechas">
+        <label class="check"><input type="checkbox" id="f_manual" onchange="armarFechas();preview()"> 📅 Poner a mano la fecha de cada pago</label>
+        <div class="fechas" id="fechasManual" hidden></div>
+      </div>
       <div class="full"><label for="f_notas">Notas</label><textarea name="notas" id="f_notas" placeholder="Garantía, referencias, acuerdos..."></textarea></div>
       <div class="preview" id="preview">Completa los datos para ver el cálculo.</div>
       <div class="full actions">
@@ -242,6 +250,7 @@ function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; 
 const DIAS = {diario:1, semanal:7, quincenal:15, mensual:30};
 const NOMBRE_FREQ = {diario:'Diario', semanal:'Semanal', quincenal:'Quincenal', mensual:'Mensual'};
 function fechaCuota(p, i){
+  if(Array.isArray(p.fechasManual) && p.fechasManual[i-1]) return parseF(p.fechasManual[i-1]);
   const ini = parseF(p.fechaInicio);
   if(p.frecuencia==='mensual') return addMonths(ini, i);
   return addDays(ini, (DIAS[p.frecuencia]||30)*i);
@@ -373,7 +382,28 @@ async function cambiarClave(e){
   finally{ btn.disabled = false; }
 }
 /* ---------- formulario ---------- */
-function abrirForm(id){
+/* Arma una casilla de fecha por cuota. Conserva lo ya escrito; las nuevas se llenan con la fecha automática. */
+function armarFechas(guardadas){
+  const f = document.getElementById('loanForm');
+  const manual = document.getElementById('f_manual').checked;
+  const cont = document.getElementById('fechasManual');
+  cont.hidden = !manual;
+  if(!manual) return;
+  const n = Math.min(120, Math.max(1, parseInt(f.elements.cuotas.value,10) || 1));
+  const previas = guardadas || [...cont.querySelectorAll('input')].map(x=>x.value);
+  const base = {fechaInicio: f.elements.fechaInicio.value || isoF(hoy()), frecuencia: f.elements.frecuencia.value};
+  let html = '';
+  for(let i=1;i<=n;i++){
+    const val = previas[i-1] || isoF(fechaCuota(base, i));
+    html += `<div><label for="fm_${i}">Pago ${i}</label><input type="date" id="fm_${i}" class="fm" value="${val}" required oninput="preview()"></div>`;
+  }
+  cont.innerHTML = html;
+}
+function leerFechasManual(){
+  if(!document.getElementById('f_manual').checked) return null;
+  return [...document.querySelectorAll('#fechasManual input.fm')].map(x=>x.value);
+}
+function abrirForm(id, irAFechas){
   if(!puedeEditar) return;
   const f = document.getElementById('loanForm');
   f.reset();
@@ -388,14 +418,20 @@ function abrirForm(id){
     f.elements.tasa.value = lsGet('prestamos_tasa') || 10;
     f.elements.cuotas.value = 1;
   }
+  const tieneManual = !!(p && Array.isArray(p.fechasManual));
+  document.getElementById('f_manual').checked = tieneManual || !!irAFechas;
+  document.getElementById('fechasManual').innerHTML = '';
+  armarFechas(tieneManual ? p.fechasManual : null);
   preview();
   cerrar('ovDetalle');
   abrir('ovForm');
-  f.elements.nombre.focus();
+  if(irAFechas){ const b = document.getElementById('bloqueFechas'); b.scrollIntoView({block:'center'}); const x = b.querySelector('input.fm'); if(x) x.focus(); }
+  else f.elements.nombre.focus();
 }
 function leerForm(){
   const f = document.getElementById('loanForm'); const o = {};
   for(const el of f.elements) if(el.name) o[el.name] = el.value.trim();
+  o.fechasManual = leerFechasManual();
   return o;
 }
 function preview(){
@@ -403,19 +439,30 @@ function preview(){
   const el = document.getElementById('preview');
   if(!(+o.capital>0) || o.tasa==='' || !(+o.cuotas>0) || !o.fechaInicio){ el.textContent='Completa los datos para ver el cálculo.'; return; }
   const c = calc({...o, abonos:[]});
+  const fm = o.fechasManual;
+  const faltan = fm && fm.some(x=>!x);
+  const desorden = fm && !faltan && fm.some((x,i)=>i>0 && x < fm[i-1]);
+  if(desorden) o.fechasManual = [...fm].sort();   // el resumen muestra el orden en que quedarán
   el.innerHTML = `Interés: <b>${money(c.interes)}</b> · Total a pagar: <b>${money(c.total)}</b><br>
-    ${c.cuotas} cuota${c.cuotas>1?'s':''} (${NOMBRE_FREQ[o.frecuencia].toLowerCase()}) de <b>${money(c.valorCuota)}</b>
-    · Primer pago: <b>${fmtF(fechaCuota(o,1))}</b> · Último: <b>${fmtF(c.fechaFin)}</b>`;
+    ${c.cuotas} cuota${c.cuotas>1?'s':''} ${fm?'con fechas puestas a mano':`(${NOMBRE_FREQ[o.frecuencia].toLowerCase()})`} de <b>${money(c.valorCuota)}</b>
+    ${faltan ? '<br><span style="color:var(--danger)">Falta poner la fecha de algún pago.</span>'
+      : `· Primer pago: <b>${fmtF(fechaCuota(o,1))}</b> · Último: <b>${fmtF(fechaCuota(o,c.cuotas))}</b>`}
+    ${desorden ? '<br><span style="color:var(--warn)">Las fechas no están en orden; al guardar se ordenan de la más próxima a la más lejana.</span>' : ''}`;
 }
 async function guardarPrestamo(e){
   e.preventDefault();
   const o = leerForm();
   o.telefono = formatoTel(o.telefono);
   o.capital = +o.capital; o.tasa = +o.tasa; o.cuotas = parseInt(o.cuotas,10);
+  if(o.fechasManual){
+    if(o.fechasManual.some(x=>!x)){ toast('Falta poner la fecha de algún pago.'); return; }
+    o.fechasManual = o.fechasManual.slice(0, o.cuotas).sort();
+  }
   lsSet('prestamos_tasa', o.tasa);
   let p;
   if(o.id){ p = {...data.find(x=>x.id===o.id), ...o}; }
   else { p = {...o, id: uid(), abonos: [], creado: new Date().toISOString()}; }
+  if(!p.fechasManual) delete p.fechasManual;   // fechas automáticas según la frecuencia
   const btn = document.getElementById('btnGuardar'); btn.disabled = true;
   try{
     await guardarDoc(p);
@@ -489,7 +536,9 @@ function verDetalle(id){
     </div>
 
     <div class="section">
-      <h4>Plan de cuotas</h4>
+      <h4 style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>Plan de cuotas${Array.isArray(p.fechasManual)?' <span style="font-weight:400;color:var(--muted);font-size:13px">(fechas puestas a mano)</span>':''}</span>
+        <button class="small" onclick="abrirForm('${p.id}', true)">📅 Cambiar fechas de pago</button></h4>
       <div class="tablewrap"><table>
         <thead><tr><th>#</th><th>Fecha</th><th class="n">Cuota</th><th class="n">Pagado</th><th>Estado</th></tr></thead>
         <tbody>${filas}</tbody>
