@@ -114,6 +114,11 @@ textarea{resize:vertical;min-height:60px}
 .dias i.hoy.pag{background:var(--day-pag);outline:none}
 .leyenda{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .leyenda span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--c)}
+.rapidos{display:flex;gap:6px;flex-wrap:wrap}
+.rapidos button{padding:4px 10px;font-size:13px}
+.libres{display:flex;gap:6px;flex-wrap:wrap}
+.libres span{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:20px;padding:3px 4px 3px 10px;font-size:13px}
+.libres button{padding:2px 8px;font-size:12px;border-radius:20px}
 .cardfoot .botones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .cardfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
@@ -218,6 +223,23 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <!-- Detalle -->
 <div class="overlay" id="ovDetalle"><div class="modal" id="detalle"></div></div>
 
+<!-- Día libre -->
+<div class="overlay" id="ovLibre">
+  <div class="modal chico">
+    <div class="head"><h2>🌴 Día libre</h2><button class="small" onclick="cerrar('ovLibre')" aria-label="Cerrar">✕</button></div>
+    <form id="libreForm" onsubmit="guardarDiaLibre(event)" style="display:grid;gap:10px">
+      <div id="libreQuien" class="preview"></div>
+      <div><label for="lb_fecha">¿Qué día no se le cobra?</label><input id="lb_fecha" type="date" required oninput="revisarDiaLibre()"></div>
+      <div class="rapidos" id="lbRapidos"></div>
+      <div id="libreAviso" class="preview"></div>
+      <div class="actions" style="margin-top:0">
+        <button type="button" onclick="cerrar('ovLibre')">Cancelar</button>
+        <button type="submit" class="primary" id="lbBtn">Dar día libre</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Confirmación -->
 <div class="overlay" id="ovConfirm">
   <div class="modal chico">
@@ -311,13 +333,14 @@ function calc(v){
   const pagos = v.pagos || [];
   const pagado = pagos.reduce((s,p)=>s + (+p.monto||0), 0);
   const tope = addDays(h, 400);
+  const libres = new Set(v.diasLibresFechas || []);   // fechas 'AAAA-MM-DD' en que no se cobra
   let cum = 0, devengado = 0, devAyer = 0, prox = null, proxFalta = 0, pagadoHasta = null, diasAtraso = 0, diasCobrados = 0;
   const dias = new Map(), diasDebe = [];
   for(let d = new Date(ini), guard = 0; guard < 6000; guard++, d = addDays(d,1)){
     const enPeriodo = d <= limite;
     if(!enPeriodo && (prox || fin || d > tope)) break;
-    const cob = true;
-    const m = tarifaEn(tarifas, d);
+    const cob = !libres.has(isoF(d));
+    const m = cob ? tarifaEn(tarifas, d) : 0;
     const antes = cum; cum += m;
     if(enPeriodo){
       devengado += m; if(d < h) devAyer += m;
@@ -347,7 +370,7 @@ function calc(v){
   else if(!finalizado && prox){ proxFecha = prox; proxMonto = proxFalta; }
   const ultimoPago = pagos.length ? pagos.map(p=>String(p.fecha)).sort().pop() : null;
   return {pagado, devengado, deuda, vencido, aFavor, estado, diasAtraso, diasCobrados, pagadoHasta, primerImpago: prox, diasDebe,
-          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), tarifas, dias, ini, fin, ultimoPago, h};
+          proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), libreHoy: libres.has(isoF(h)), libres, tarifas, dias, ini, fin, ultimoPago, h};
 }
 function estadoDia(c, d){
   const iso = isoF(d);
@@ -355,12 +378,13 @@ function estadoDia(c, d){
   const x = c.dias.get(iso);
   if(!x) return 'na';
   const esHoy = +d === +c.h;
+  if(!x.cob) return 'libre';
   if(x.despues <= c.pagado + 0.01) return esHoy ? 'hoy pag' : 'pag';
   if(x.antes < c.pagado - 0.01) return esHoy ? 'hoy parc' : 'parc';
   return esHoy ? 'hoy' : 'deb';
 }
 function tiraDias(c, n){
-  const NOMBRES = {pag:'pagado', parc:'pago parcial', deb:'sin pagar', na:'sin alquiler', hoy:'hoy, pendiente', 'hoy pag':'hoy, pagado', 'hoy parc':'hoy, pago parcial'};
+  const NOMBRES = {pag:'pagado', parc:'pago parcial', deb:'sin pagar', libre:'día libre', na:'sin alquiler', hoy:'hoy, pendiente', 'hoy pag':'hoy, pagado', 'hoy parc':'hoy, pago parcial'};
   let html = '';
   for(let i = n-1; i >= 0; i--){
     const d = addDays(c.h, -i), e = estadoDia(c, d);
@@ -368,7 +392,7 @@ function tiraDias(c, n){
   }
   return `<div class="dias" aria-label="Últimos ${n} días">${html}</div>`;
 }
-const LEYENDA = `<div class="leyenda"><span style="--c:var(--day-pag)">Pagado</span><span style="--c:var(--day-parc)">Parcial</span><span style="--c:var(--day-deb)">Sin pagar</span></div>`;
+const LEYENDA = `<div class="leyenda"><span style="--c:var(--day-pag)">Pagado</span><span style="--c:var(--day-parc)">Parcial</span><span style="--c:var(--day-deb)">Sin pagar</span><span style="--c:var(--day-libre)">Día libre</span></div>`;
 function chip(c){
   if(c.estado==='done') return '<span class="chip done">Finalizado ✓</span>';
   const n = c.diasDebe.length;
@@ -386,21 +410,23 @@ function renderHoy(activos, cobHoy, deudaTotal){
   const box = document.getElementById('hoy');
   if(!cargado || !activos.length){ box.hidden = true; return; }
   box.hidden = false;
-  const esperado = activos.reduce((t,x)=>t + x.c.tarifaHoy, 0);
+  const esperado = activos.reduce((t,x)=>t + (x.c.libreHoy ? 0 : x.c.tarifaHoy), 0);
   const pendientes = activos.filter(x=>x.c.deuda > 0.01)
     .sort((a,b)=> b.c.diasDebe.length - a.c.diasDebe.length || String(a.v.nombre).localeCompare(String(b.v.nombre)));
   const cubiertos = activos.filter(x=>x.c.deuda <= 0.01);
   const pct = esperado > 0 ? Math.min(100, cobHoy / esperado * 100) : 0;
   const fecha = hoy().toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
   const fila = ({v,c}) => {
-    const atrasado = c.deuda - c.tarifaHoy;   // lo que debe de días anteriores
+    const deHoy = c.libreHoy ? 0 : Math.min(c.tarifaHoy, c.deuda);
+    const atrasado = c.deuda - deHoy;   // lo que debe de días anteriores
     return `<div class="hoy-fila">
       <div style="min-width:0">
         <div class="q" onclick="verDetalle('${v.id}')">${esc(v.nombre)} <span class="placa">${esc(v.placa)}</span></div>
-        <div class="sub">Hoy: ${money(Math.min(c.tarifaHoy, c.deuda))}${atrasado > 0.01 ? ` · <span style="color:var(--danger)">atrasado ${money(atrasado)} (${plural(c.diasDebe.length-1,'día')})</span>` : ''}</div>
+        <div class="sub">Hoy: ${c.libreHoy ? '🌴 día libre' : money(deHoy)}${atrasado > 0.01 ? ` · <span style="color:var(--danger)">atrasado ${money(atrasado)} (${plural(c.diasDebe.filter(x=>+x.f!==+c.h).length,'día')})</span>` : ''}</div>
       </div>
       <div class="btns">
-        <button class="small primary" onclick="abonar('${v.id}','dia')">✓ Pagó hoy · ${money(c.tarifaHoy)}</button>
+        <button class="small primary" onclick="abonar('${v.id}','dia')">${c.libreHoy?'💵 Abonar':'✓ Pagó hoy'} · ${money(c.tarifaHoy)}</button>
+        ${!c.libreHoy ? `<button class="small" onclick="diaLibre('${v.id}')">🌴 Día libre</button>` : ''}
         ${atrasado > 0.01 ? `<button class="small" onclick="abonar('${v.id}',true)">Pagó todo · ${money(c.deuda)}</button>` : ''}
       </div>
     </div>`;
@@ -414,7 +440,7 @@ function renderHoy(activos, cobHoy, deudaTotal){
     </div>
     ${pendientes.length ? pendientes.map(fila).join('') : '<div class="listo">✅ Todos pagaron hoy.</div>'}
     ${cubiertos.length && pendientes.length ? `<details><summary>Ya pagaron hoy (${cubiertos.length})</summary>
-      ${cubiertos.map(({v,c})=>`<div class="sub" style="padding:4px 0">✓ ${esc(v.nombre)} — pagado hasta el ${c.pagadoHasta?fmtF(c.pagadoHasta):'—'}</div>`).join('')}</details>` : ''}`;
+      ${cubiertos.map(({v,c})=>`<div class="sub" style="padding:4px 0">${c.libreHoy?'🌴':'✓'} ${esc(v.nombre)} — ${c.libreHoy?'hoy es su día libre':'pagado hasta el '+(c.pagadoHasta?fmtF(c.pagadoHasta):'—')}</div>`).join('')}</details>` : ''}`;
 }
 function render(){
   const q = document.getElementById('buscar').value.trim().toLowerCase();
@@ -467,6 +493,7 @@ function render(){
         <span>Últimos 14 días</span>
         ${!(v.estado==='finalizado' && c.deuda<=0.01) ? `<span class="botones">
           <button class="small" onclick="event.stopPropagation();abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar':'Adelantar pago'}</button>
+          ${v.estado!=='finalizado'?`<button class="small" onclick="event.stopPropagation();diaLibre('${v.id}')">🌴 Día libre</button>`:''}
           ${c.deuda>0.01?`<button class="small primary" onclick="event.stopPropagation();abonar('${v.id}',true)">✓ Pagó todo</button>`:''}
         </span>`:''}
       </div>
@@ -659,6 +686,13 @@ function verDetalle(id){
     <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary" onclick="abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
       ${c.deuda>0.01?`<button onclick="abonar('${v.id}',true)">✓ Pagó todo (${money(c.deuda)})</button>`:''}
+      ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Día libre</button>`:''}
+    </div>`:''}
+
+    ${(v.diasLibresFechas||[]).length?`<div class="section">
+      <h4>🌴 Días libres (${v.diasLibresFechas.length})</h4>
+      <div class="libres">${v.diasLibresFechas.slice().sort().reverse().map(f=>`<span>${parseF(f).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})}
+        <button type="button" onclick="quitarDiaLibre('${v.id}','${f}')" title="Quitar este día libre (se vuelve a cobrar)">Quitar</button></span>`).join('')}</div>
     </div>`:''}
 
     <div class="section">
@@ -697,6 +731,58 @@ async function registrarPago(id, monto, fecha, nota){
     return true;
   }catch(err){ errorGuardar(err); return false; }
 }
+/* ---------- día libre: un día (el que sea) en que no se cobra la tarifa ---------- */
+let libreId = null;
+const lunesDe = d => addDays(d, -((d.getDay()+6)%7));   // semana de lunes a domingo
+function diaLibre(id){
+  const v = data.find(x=>x.id===id); if(!v) return;
+  libreId = id;
+  const c = calc(v);
+  document.getElementById('libreQuien').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>Ese día no se le cobra la tarifa de ${money(c.tarifaHoy)}.`;
+  const h = hoy(), opciones = [['Hoy', h], ['Mañana', addDays(h,1)], ['Ayer', addDays(h,-1)]];
+  document.getElementById('lbRapidos').innerHTML = opciones.map(([t,d])=>`<button type="button" onclick="document.getElementById('lb_fecha').value='${isoF(d)}';revisarDiaLibre()">${t}</button>`).join('');
+  document.getElementById('lb_fecha').value = isoF(c.libreHoy ? addDays(h,1) : h);
+  revisarDiaLibre();
+  abrir('ovLibre');
+}
+function revisarDiaLibre(){
+  const v = data.find(x=>x.id===libreId); if(!v) return;
+  const el = document.getElementById('libreAviso'), btn = document.getElementById('lbBtn');
+  const val = document.getElementById('lb_fecha').value;
+  if(!val){ el.textContent = 'Elige una fecha.'; btn.disabled = true; return; }
+  const d = parseF(val), libres = v.diasLibresFechas || [];
+  btn.disabled = false;
+  if(val < v.fechaInicio){ el.innerHTML = '<span style="color:var(--danger)">Esa fecha es antes de que empezara el alquiler.</span>'; btn.disabled = true; return; }
+  if(libres.includes(val)){ el.innerHTML = 'Ese día ya es libre.'; btn.disabled = true; return; }
+  const lun = lunesDe(d), dom = addDays(lun, 6);
+  const enSemana = libres.filter(f => f >= isoF(lun) && f <= isoF(dom));
+  const nombre = d.toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
+  el.innerHTML = enSemana.length
+    ? `<span style="color:var(--warn)">⚠️ Esa semana ya tiene día libre: ${enSemana.map(f=>parseF(f).toLocaleDateString('es',{weekday:'long',day:'numeric'})).join(', ')}. Si sigues, tendrá ${enSemana.length+1} días libres esa semana.</span>`
+    : `No se cobrará el <b>${nombre}</b>.`;
+}
+async function guardarDiaLibre(e){
+  e.preventDefault();
+  const base = data.find(x=>x.id===libreId); if(!base) return;
+  const val = document.getElementById('lb_fecha').value; if(!val) return;
+  const v = {...base, diasLibresFechas: [...new Set([...(base.diasLibresFechas||[]), val])].sort()};
+  const btn = document.getElementById('lbBtn'); btn.disabled = true;
+  try{
+    await guardarDoc(v); reemplazar(v); render();
+    if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(v.id);
+    cerrar('ovLibre');
+    toast('🌴 Día libre: ' + parseF(val).toLocaleDateString('es',{weekday:'long', day:'numeric', month:'short'}) + ' — no se cobra');
+  }catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+async function quitarDiaLibre(id, fecha){
+  const base = data.find(x=>x.id===id); if(!base) return;
+  if(!await confirmar('Quitar día libre', `¿Volver a cobrar el ${parseF(fecha).toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'})} a <b>${esc(base.nombre)}</b>?`, 'Quitar')) return;
+  const v = {...base, diasLibresFechas: (base.diasLibresFechas||[]).filter(f=>f!==fecha)};
+  try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(id); toast('Día libre quitado'); }
+  catch(err){ errorGuardar(err); }
+}
+
 /* Abre la ventana de abono. Con "todo" viene lleno con la deuda completa. */
 function abonar(id, todo){
   const v = data.find(x=>x.id===id); if(!v) return;
