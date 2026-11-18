@@ -193,6 +193,171 @@ function alertaCopias(cuerpo, e){
     : `<p class="aviso">${e && e.message ? e.message : 'No hay conexión.'}</p>`);
 }
 
+/* ---------- factura / recibo en imagen ----------
+   d = {seccion, color, titulo, numero, fecha (Date), cliente: [[etiqueta, valor]], filas: [{t, v, nota, color:'ok'|'bad', fuerte} | {seccion}],
+        totalLabel, total, estado: {texto, ok}, pie, tel, archivo} */
+function nombreNegocio(){ return lsGet('negocio_nombre') || 'Mis Negocios'; }
+function _lineas(g, texto, max){
+  const palabras = String(texto ?? '').split(/\s+/); const out = []; let cur = '';
+  for(const w of palabras){
+    const prueba = cur ? cur + ' ' + w : w;
+    if(g.measureText(prueba).width > max && cur){ out.push(cur); cur = w; } else cur = prueba;
+  }
+  if(cur) out.push(cur);
+  return out.length ? out : [''];
+}
+async function dibujarFactura(d){
+  try{ await document.fonts.ready; }catch(e){}
+  const W = 1080, M = 44, X0 = M + 56, X1 = W - M - 56, ANCHO = X1 - X0;
+  const TINTA = '#1d232b', GRIS = '#6b7380', LINEA = '#c9ced6', OK = '#1e8e4e', MAL = '#c0392b', ACENTO = d.color || '#2f2fb8';
+  const F = (peso, tam, mono) => `${peso} ${tam}px ${mono ? 'ui-monospace, Consolas, monospace' : 'Inter, system-ui, sans-serif'}`;
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  const ops = [];                         // cada bloque: {h, draw(y)}
+  const add = (h, draw) => ops.push({h, draw: draw || (()=>{})});
+  const sep = () => add(44, y => { g.strokeStyle = LINEA; g.lineWidth = 3; g.setLineDash([14, 12]); g.beginPath(); g.moveTo(X0, y+22); g.lineTo(X1, y+22); g.stroke(); g.setLineDash([]); });
+
+  // encabezado
+  add(30);
+  add(60, y => { g.fillStyle = TINTA; g.font = F(800, 48); g.textAlign = 'center'; g.fillText(nombreNegocio(), W/2, y+48); });
+  add(44, y => { g.fillStyle = GRIS; g.font = F(500, 28); g.textAlign = 'center'; g.fillText(d.seccion || '', W/2, y+32); });
+  add(18);
+  add(70, y => { g.fillStyle = ACENTO; g.beginPath(); g.roundRect(X0, y, ANCHO, 64, 14); g.fill();
+    g.fillStyle = '#fff'; g.font = F(800, 32); g.textAlign = 'center'; g.fillText(d.titulo, W/2, y+44); });
+  add(16);
+  add(40, y => { g.font = F(600, 26); g.fillStyle = GRIS; g.textAlign = 'left'; g.fillText('No. ' + (d.numero || ''), X0, y+28);
+    g.textAlign = 'right'; g.fillText((d.fecha || new Date()).toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'}), X1, y+28); });
+  sep();
+
+  // cliente
+  for(const [k, v] of (d.cliente || [])){
+    g.font = F(600, 28); const ls = _lineas(g, v, ANCHO - 230);
+    add(16 + ls.length * 38, y => {
+      g.textAlign = 'left'; g.fillStyle = GRIS; g.font = F(500, 26); g.fillText(k, X0, y+30);
+      g.fillStyle = TINTA; g.font = F(600, 28); ls.forEach((l, i) => g.fillText(l, X0 + 230, y + 30 + i*38));
+    });
+  }
+  sep();
+
+  // detalle
+  for(const f of (d.filas || [])){
+    if(f.seccion){
+      add(52, y => { g.textAlign = 'left'; g.fillStyle = ACENTO; g.font = F(800, 24); g.fillText(String(f.seccion).toUpperCase(), X0, y+36); });
+      continue;
+    }
+    g.font = F(f.fuerte ? 700 : 500, f.fuerte ? 32 : 28);
+    const ls = _lineas(g, f.t, ANCHO * 0.62);
+    g.font = F(500, 23); const ns = f.nota ? _lineas(g, f.nota, ANCHO * 0.62) : [];
+    const lh = f.fuerte ? 42 : 38;
+    add(12 + ls.length * lh + ns.length * 30 + 4, y => {
+      const col = f.color === 'ok' ? OK : f.color === 'bad' ? MAL : TINTA;
+      g.textAlign = 'left'; g.fillStyle = TINTA; g.font = F(f.fuerte ? 700 : 500, f.fuerte ? 32 : 28);
+      ls.forEach((l, i) => g.fillText(l, X0, y + 34 + i*lh));
+      g.fillStyle = GRIS; g.font = F(500, 23);
+      ns.forEach((l, i) => g.fillText(l, X0, y + 34 + ls.length*lh - 6 + i*30));
+      g.textAlign = 'right'; g.fillStyle = col; g.font = F(f.fuerte ? 800 : 700, f.fuerte ? 34 : 28, true);
+      g.fillText(f.v ?? '', X1, y + 34);
+    });
+  }
+  sep();
+
+  // total
+  add(84, y => {
+    g.textAlign = 'left'; g.fillStyle = TINTA; g.font = F(800, 32); g.fillText(String(d.totalLabel || 'Total').toUpperCase(), X0, y+54);
+    g.textAlign = 'right'; g.fillStyle = d.estado && !d.estado.ok ? MAL : TINTA; g.font = F(800, 46, true); g.fillText(d.total || '', X1, y+56);
+  });
+  // sello
+  if(d.estado){
+    add(130, y => {
+      const col = d.estado.ok ? OK : MAL;
+      g.save(); g.translate(W/2, y+62); g.rotate(-0.05);
+      g.font = F(900, 40); const w = g.measureText(d.estado.texto).width + 70;
+      g.strokeStyle = col; g.lineWidth = 6; g.beginPath(); g.roundRect(-w/2, -38, w, 76, 16); g.stroke();
+      g.fillStyle = col; g.textAlign = 'center'; g.fillText(d.estado.texto, 0, 14);
+      g.restore();
+    });
+  }
+  sep();
+  add(48, y => { g.textAlign = 'center'; g.fillStyle = TINTA; g.font = F(700, 30); g.fillText(d.pie || '¡Gracias!', W/2, y+34); });
+  add(40, y => { g.textAlign = 'center'; g.fillStyle = GRIS; g.font = F(500, 22);
+    g.fillText('Generado el ' + new Date().toLocaleString('es', {day:'numeric', month:'short', year:'numeric', hour:'numeric', minute:'2-digit'}), W/2, y+28); });
+  add(40);
+
+  // tamaño final y dibujo
+  const altoPapel = ops.reduce((t, o) => t + o.h, 0), H = altoPapel + M*2;
+  c.width = W; c.height = H;
+  g.fillStyle = '#e9edf2'; g.fillRect(0, 0, W, H);
+  // papel con bordes de sierra arriba y abajo
+  const diente = 22, top = M, bot = M + altoPapel;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.12)'; g.shadowBlur = 24; g.shadowOffsetY = 6;
+  g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(M, top + diente);
+  for(let x = M; x < W - M; x += diente*2){ g.lineTo(x + diente, top); g.lineTo(Math.min(x + diente*2, W - M), top + diente); }
+  g.lineTo(W - M, bot - diente);
+  for(let x = W - M; x > M; x -= diente*2){ g.lineTo(x - diente, bot); g.lineTo(Math.max(x - diente*2, M), bot - diente); }
+  g.closePath(); g.fill(); g.restore();
+  let y = top + 4;
+  for(const o of ops){ o.draw(y); y += o.h; }
+  return c;
+}
+let _factura = null;
+async function enviarFactura(d){
+  let ov = document.getElementById('ovFactura');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.className = 'overlay'; ov.id = 'ovFactura';
+    ov.innerHTML = `<div class="modal chico">
+      <div class="head"><h2>🧾 Recibo en imagen</h2><button class="small" type="button" data-cerrar aria-label="Cerrar">✕</button></div>
+      <img id="facImg" alt="Recibo" style="width:100%;max-height:58vh;object-fit:contain;border-radius:10px;background:#e9edf2;display:block">
+      <div style="margin-top:10px"><label for="facNegocio">Nombre de tu negocio (sale arriba del recibo)</label>
+        <input id="facNegocio" autocomplete="off"></div>
+      <div id="facMsg" class="preview" style="margin-top:10px" hidden></div>
+      <div class="actions">
+        <button type="button" id="facBajar">⬇ Descargar</button>
+        <button type="button" class="primary" id="facEnviar">📤 Enviar por WhatsApp</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', e=>{ if(e.target === ov) ov.classList.remove('open'); });
+    ov.querySelector('[data-cerrar]').onclick = () => ov.classList.remove('open');
+    ov.querySelector('#facNegocio').addEventListener('change', e=>{ lsSet('negocio_nombre', e.target.value.trim()); _factura.blob = null; _factura.listo = prepararFactura(); });
+    ov.querySelector('#facBajar').onclick = () => {
+      if(!_factura || !_factura.blob) return;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(_factura.blob); a.download = _factura.archivo;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    };
+    ov.querySelector('#facEnviar').onclick = compartirFactura;
+  }
+  _factura = {d, blob:null, archivo:(d.archivo || 'recibo') + '.png'};
+  ov.querySelector('#facNegocio').value = nombreNegocio();
+  ov.querySelector('#facMsg').hidden = true;
+  ov.classList.add('open');
+  _factura.listo = prepararFactura();
+  await _factura.listo;
+}
+async function prepararFactura(){
+  const ov = document.getElementById('ovFactura'); if(!_factura) return;
+  const canvas = await dibujarFactura(_factura.d);
+  ov.querySelector('#facImg').src = canvas.toDataURL('image/png');
+  _factura.blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+}
+/* Teléfono: menú de compartir con la imagen (se elige WhatsApp). Computadora: copia la imagen y abre el chat para pegarla. */
+async function compartirFactura(){
+  const ov = document.getElementById('ovFactura'), msg = ov.querySelector('#facMsg');
+  if(!_factura) return;
+  if(!_factura.blob && _factura.listo) await _factura.listo;   // espera si la imagen aún se está generando
+  if(!_factura.blob) return;
+  const file = new File([_factura.blob], _factura.archivo, {type:'image/png'});
+  const mostrar = html => { msg.innerHTML = html; msg.hidden = false; };
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file]}); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  let copiada = false;
+  try{ await navigator.clipboard.write([new ClipboardItem({'image/png': _factura.blob})]); copiada = true; }catch(e){}
+  const t = String(_factura.d.tel||'').replace(/[^\d]/g,''); const num = t.length === 8 ? '504'+t : t;
+  if(num) window.open('https://wa.me/' + num, '_blank', 'noopener');
+  if(copiada) mostrar(`✅ Imagen copiada. ${num ? 'Se abrió el chat de WhatsApp: pégala con <b>Ctrl + V</b> y envíala.' : 'Pégala en el chat con <b>Ctrl + V</b>.'}`);
+  else { ov.querySelector('#facBajar').click(); mostrar(`La imagen se descargó. ${num ? 'En el chat que se abrió, toca 📎 y adjunta la imagen descargada.' : 'Adjúntala en WhatsApp con 📎.'}`); }
+}
+
 /* ---------- teléfono de Honduras (+504) ---------- */
 /* "99887766", "9988-7766" o "50499887766" -> "+504 9988-7766". Otros formatos se dejan como están. */
 function telLocal(t){
@@ -299,8 +464,11 @@ function mostrarRecibo(r){
   ov.querySelector('#abcCuerpo').innerHTML = `<div class="ab-ok">
       <div class="big">✅</div>
       <div>${r.resumen}</div>
-      ${url ? `<a class="wa" href="${url}" target="_blank" rel="noopener">💬 Enviar recibo por WhatsApp</a>` : ''}
+      ${r.factura ? `<button type="button" class="primary" data-factura style="padding:12px;font-weight:600">🧾 Enviar recibo en imagen</button>` : ''}
+      ${url ? `<a class="wa" href="${url}" target="_blank" rel="noopener">💬 Enviar recibo como texto</a>` : ''}
       <button type="button" data-listo>Listo</button>
     </div>`;
   ov.querySelector('[data-listo]').onclick = () => ov.classList.remove('open');
+  const bf = ov.querySelector('[data-factura]');
+  if(bf) bf.onclick = () => { ov.classList.remove('open'); enviarFactura(r.factura); };
 }

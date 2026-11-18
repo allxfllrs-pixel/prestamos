@@ -547,6 +547,7 @@ function verDetalle(id){
 
     <div class="actions">
       ${puedeEditar?`<button class="danger" onclick="borrarPrestamo('${p.id}')">Eliminar</button>`:''}
+      <button onclick="enviarFactura(facturaPrestamo(data.find(x=>x.id==='${p.id}')))">🧾 Estado de cuenta (imagen)</button>
       ${wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">💬 Recordatorio por WhatsApp</a>`:''}
       ${puedeEditar?`<button class="primary" onclick="abrirForm('${p.id}')">✏ Editar / cambiar interés</button>`:''}
     </div>`;
@@ -558,10 +559,43 @@ function siguientePaso(c){
   return c.proxima ? ` Próxima cuota: ${fmtF(c.proxima)}.` : '';
 }
 /* Botón 💬 para mandar otra vez el recibo de un abono anterior (con el saldo de hoy) */
+/* ---------- recibo / estado de cuenta en imagen ---------- */
+function facturaPrestamo(p, abono){
+  const c = calc(p);
+  const filas = [];
+  if(abono) filas.push({t:'Abono recibido', nota:'Fecha del abono: ' + fmtF(abono.fecha) + (abono.nota ? ' · ' + abono.nota : ''), v:money(+abono.monto), fuerte:true, color:'ok'});
+  filas.push({seccion:'Préstamo'});
+  filas.push({t:'Monto prestado', nota:'Desde el ' + fmtF(p.fechaInicio), v:money(c.capital)});
+  filas.push({t:'Interés', nota:`${c.tasa}% ${p.tipoInteres==='mensual'?'mensual':'único'}`, v:money(c.interes)});
+  filas.push({t:'Total a pagar', v:money(c.total)});
+  filas.push({t:'Total abonado', v:money(c.pagado), color:'ok'});
+  filas.push({t:'Cuotas pagadas', nota:`Cuota de ${money(c.valorCuota)}`, v:`${c.cuotasPagadas} de ${c.cuotas}`});
+  if(c.montoVencido > 0.01) filas.push({t:'Vencido sin pagar', nota: c.proxima ? 'Desde el ' + fmtF(c.proxima) : '', v:money(c.montoVencido), color:'bad'});
+  else if(c.proxima) filas.push({t:'Próxima cuota', v:fmtF(c.proxima)});
+  const pagado = c.saldo <= 0.01;
+  return {
+    seccion:'Préstamos', color:'#127a6c',
+    titulo: abono ? 'RECIBO DE ABONO' : 'ESTADO DE CUENTA',
+    numero: abono ? 'A-' + String(abono.id).slice(-6).toUpperCase() : 'EC-' + isoF(hoy()).replace(/-/g,''),
+    fecha: abono ? parseF(abono.fecha) : hoy(),
+    cliente: [['Cliente', p.nombre], ['Teléfono', formatoTel(p.telefono)], ...(p.documento ? [['DNI', p.documento]] : [])],
+    filas, totalLabel:'Saldo pendiente', total:money(c.saldo),
+    estado: pagado ? {texto:'PAGADO  ✓', ok:true} : c.montoVencido > 0.01 ? {texto:'ATRASADO', ok:false} : {texto:'AL DÍA', ok:true},
+    pie: abono ? '¡Gracias por su abono!' : 'Gracias por su puntualidad.',
+    tel: p.telefono,
+    archivo: (abono ? 'recibo-' : 'estado-cuenta-') + String(p.nombre||'cliente').replace(/\W+/g,'-') + '-' + (abono ? abono.fecha : isoF(hoy()))
+  };
+}
+function facturaAbono(pid, aid){
+  const p = data.find(x=>x.id===pid); if(!p) return;
+  const a = (p.abonos||[]).find(x=>x.id===aid); if(!a) return;
+  enviarFactura(facturaPrestamo(p, a));
+}
 function reciboViejo(p, c, a){
   const url = linkWhatsApp(p.telefono, `Hola ${p.nombre}, este es el recibo de tu abono de ${money(+a.monto)} del ${fmtF(a.fecha)}. ` +
     (c.saldo <= 0.01 ? 'Tu préstamo está pagado por completo.' : `Saldo pendiente hoy: ${money(c.saldo)}.` + siguientePaso(c)) + ' ¡Gracias!');
-  return url ? `<a class="btn small" style="padding:4px 10px;font-size:13px;margin-right:6px" href="${url}" target="_blank" rel="noopener" title="Enviar recibo por WhatsApp">💬 Recibo</a>` : '';
+  return `<button class="small" style="margin-right:6px" onclick="facturaAbono('${p.id}','${a.id}')" title="Recibo en imagen">🧾</button>` +
+    (url ? `<a class="btn small" style="padding:4px 10px;font-size:13px;margin-right:6px" href="${url}" target="_blank" rel="noopener" title="Enviar recibo como texto">💬</a>` : '');
 }
 async function registrarAbono(id, monto, fecha, nota){
   const base = data.find(x=>x.id===id); if(!base) return false;
@@ -601,6 +635,7 @@ function abonarPrestamo(id, montoInicial){
       const c2 = calc(data.find(x=>x.id===id));
       return {
         tel: p.telefono,
+        factura: (()=>{ const pp = data.find(x=>x.id===id); return facturaPrestamo(pp, (pp.abonos||[]).at(-1)); })(),
         resumen: `Abono de <b>${money(m)}</b> de ${esc(p.nombre)}.<br>${estadoTxt(c2)}`,
         texto: `Hola ${p.nombre}, recibí tu abono de ${money(m)} el ${fmtF(fecha)}. ` +
           (c2.saldo <= 0.01 ? 'Tu préstamo quedó pagado por completo.'

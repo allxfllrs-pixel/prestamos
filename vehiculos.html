@@ -746,16 +746,60 @@ function verDetalle(id){
     <div class="actions">
       ${puedeEditar?`<button class="danger" onclick="borrarVehiculo('${v.id}')">Eliminar</button>`:''}
       ${puedeEditar?(finalizado?`<button onclick="reactivar('${v.id}')">↺ Reactivar alquiler</button>`:`<button onclick="finalizar('${v.id}')">🏁 Finalizar alquiler</button>`):''}
+      <button onclick="enviarFactura(facturaVehiculo(data.find(x=>x.id==='${v.id}')))">🧾 Estado de cuenta (imagen)</button>
       ${wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">💬 Recordatorio por WhatsApp</a>`:''}
       ${puedeEditar?`<button class="primary" onclick="abrirForm('${v.id}')">✏ Editar / cambiar tarifa</button>`:''}
     </div>`;
   abrir('ovDetalle');
 }
 /* Botón 💬 para mandar otra vez el recibo de un pago anterior (con la cuenta de hoy) */
+/* ---------- recibo / estado de cuenta en imagen (los mismos datos del mensaje de WhatsApp) ---------- */
+function facturaVehiculo(v, pago){
+  const c = calc(v), cargos = v.cargos || [];
+  const pend = cargos.filter(x=>x.cobrar && !x.pagado);
+  const desde = isoF(addDays(hoy(), -30));
+  const mant = cargos.filter(x=>x.tipo==='mant' && !(x.cobrar && !x.pagado) && String(x.fecha) >= desde);
+  const filas = [];
+  if(pago) filas.push({t:'Pago recibido', nota:'Fecha del pago: ' + fmtF(pago.fecha) + (pago.nota ? ' · ' + pago.nota : ''), v:money(+pago.monto), fuerte:true, color:'ok'});
+  filas.push({seccion:'Renta del vehículo'});
+  filas.push({t:'Tarifa diaria', v:money(c.tarifaHoy)});
+  filas.push({t:'Pagado hasta', v:c.pagadoHasta ? fmtF(c.pagadoHasta) : '—'});
+  if(c.aFavor > 0.01) filas.push({t:'Saldo a favor', v:money(c.aFavor), color:'ok'});
+  filas.push({t:'Debe por renta', nota: c.diasDebe.length ? plural(c.diasDebe.length,'día') + ': ' + rangosDias(c.diasDebe) : 'Sin días pendientes',
+              v:money(c.deuda), color: c.deuda > 0.01 ? 'bad' : 'ok'});
+  if(pend.length){
+    filas.push({seccion:'Daños / cargos pendientes'});
+    pend.forEach(x=>filas.push({t:x.desc, nota:fmtF(x.fecha), v:money(+x.monto), color:'bad'}));
+  }
+  if(mant.length){
+    filas.push({seccion:'Mantenimiento reciente'});
+    mant.forEach(x=>filas.push({t:x.desc, nota:fmtF(x.fecha) + (x.cobrar ? ' · pagado' : ' · por cuenta del dueño'), v:money(+x.monto)}));
+  }
+  const total = c.deuda + c.cargosPend;
+  return {
+    seccion:'Alquiler de vehículos', color:'#2f2fb8',
+    titulo: pago ? 'RECIBO DE PAGO' : 'ESTADO DE CUENTA',
+    numero: pago ? 'R-' + String(pago.id).slice(-6).toUpperCase() : 'EC-' + isoF(hoy()).replace(/-/g,''),
+    fecha: pago ? parseF(pago.fecha) : hoy(),
+    cliente: [['Cliente', v.nombre], ['Teléfono', formatoTel(v.telefono)], ...(v.documento ? [['DNI', v.documento]] : []),
+              ['Vehículo', `${nombreAuto(v)}${v.color ? ' · ' + v.color : ''} · Placa ${v.placa}`]],
+    filas, totalLabel:'Total pendiente', total:money(total),
+    estado: total > 0.01 ? {texto:'SALDO PENDIENTE', ok:false} : {texto:'AL DÍA  ✓', ok:true},
+    pie: pago ? '¡Gracias por su pago!' : 'Gracias por mantenerse al día.',
+    tel: v.telefono,
+    archivo: (pago ? 'recibo-' : 'estado-cuenta-') + String(v.placa||'vehiculo').replace(/\W/g,'') + '-' + (pago ? pago.fecha : isoF(hoy()))
+  };
+}
+function facturaPago(vid, pid){
+  const v = data.find(x=>x.id===vid); if(!v) return;
+  const p = (v.pagos||[]).find(x=>x.id===pid); if(!p) return;
+  enviarFactura(facturaVehiculo(v, p));
+}
 function reciboViejo(v, c, p){
   const url = linkWhatsApp(v.telefono, `Hola ${v.nombre}, este es el recibo de tu pago de ${money(+p.monto)} del ${fmtF(p.fecha)} por el vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
     (c.deuda > 0.01 ? `Saldo pendiente hoy: ${money(c.deuda)} (${rangosDias(c.diasDebe)}).` : `Estás al día${c.pagadoHasta?` hasta el ${fmtF(c.pagadoHasta)}`:''}.`) + ' ¡Gracias!');
-  return url ? `<a class="btn small" style="padding:4px 10px;font-size:13px;margin-right:6px" href="${url}" target="_blank" rel="noopener" title="Enviar recibo por WhatsApp">💬 Recibo</a>` : '';
+  return `<button class="small" style="margin-right:6px" onclick="facturaPago('${v.id}','${p.id}')" title="Recibo en imagen">🧾</button>` +
+    (url ? `<a class="btn small" style="padding:4px 10px;font-size:13px;margin-right:6px" href="${url}" target="_blank" rel="noopener" title="Enviar recibo como texto">💬</a>` : '');
 }
 async function registrarPago(id, monto, fecha, nota){
   const base = data.find(x=>x.id===id); if(!base) return false;
@@ -918,6 +962,7 @@ function abonar(id, todo){
       const c2 = calc(data.find(x=>x.id===id));
       return {
         tel: v.telefono,
+        factura: (()=>{ const vv = data.find(x=>x.id===id); return facturaVehiculo(vv, (vv.pagos||[]).at(-1)); })(),
         resumen: `Abono de <b>${money(m)}</b> de ${esc(v.nombre)}.<br>${estadoTxt(c2)}`,
         texto: `Hola ${v.nombre}, recibí tu pago de ${money(m)} el ${fmtF(fecha)} por el vehículo ${nombreAuto(v)} (placa ${v.placa}). ` +
           (c2.deuda > 0.01 ? `Saldo pendiente: ${money(c2.deuda)} (${rangosDias(c2.diasDebe)}).`
