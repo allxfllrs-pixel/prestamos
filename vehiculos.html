@@ -129,6 +129,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .punto{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--c);border:1px solid rgba(128,128,128,.55);vertical-align:-1px;margin-right:5px;flex:none}
 .colores{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .colores button{display:flex;align-items:center;gap:4px;padding:4px 9px;font-size:13px;border-radius:20px}
+.incompleto{background:var(--chip-warn);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .colores button.on{border-color:var(--primary-2);outline:2px solid var(--primary-2);outline-offset:-1px}
 .info b{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .destacado{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px}
@@ -183,11 +184,15 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div class="full"><label for="f_dir">Dirección completa *</label><input name="direccion" id="f_dir" required autocomplete="off"></div>
 
       <h4>🚗 Vehículo</h4>
-      <div><label for="f_marca">Marca *</label><input name="marca" id="f_marca" required placeholder="Escribe o elige: Toyota" list="dl_marcas" autocomplete="off" oninput="actualizarModelos()"></div>
-      <div><label for="f_modelo">Modelo *</label><input name="modelo" id="f_modelo" required placeholder="Escribe o elige: Corolla" list="dl_modelos" autocomplete="off"></div>
-      <div class="full"><label for="f_color">Color *</label><input name="color" id="f_color" required placeholder="Elige un color o escríbelo" autocomplete="off" oninput="marcarColor()">
-        <div class="colores" id="colores"></div></div>
-      <datalist id="dl_marcas"></datalist><datalist id="dl_modelos"></datalist>
+      <div><label for="f_marca_sel">Marca *</label>
+        <select id="f_marca_sel" required onchange="cambioLista('marca')"></select>
+        <input name="marca" id="f_marca" hidden placeholder="Escribe la marca completa" autocomplete="off" style="margin-top:6px"></div>
+      <div><label for="f_modelo_sel">Modelo *</label>
+        <select id="f_modelo_sel" required onchange="cambioLista('modelo')"></select>
+        <input name="modelo" id="f_modelo" hidden placeholder="Escribe el modelo completo" autocomplete="off" style="margin-top:6px"></div>
+      <div class="full"><label>Color * <span style="font-weight:400">— toca uno</span></label>
+        <div class="colores" id="colores"></div>
+        <input name="color" id="f_color" hidden placeholder="Escribe el color completo" autocomplete="off" style="margin-top:6px"></div>
       <div><label for="f_placa">Placa *</label><input name="placa" id="f_placa" required style="text-transform:uppercase"></div>
 
       <h4>💵 Tarifa diaria</h4>
@@ -240,7 +245,7 @@ function hoy(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(
 function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 const difDias = (a,b) => Math.round((a-b)/86400000);
 const plural = (n, s, p) => n + ' ' + (n===1 ? s : (p || s+'s'));
-const nombreAuto = v => [v.marca, v.modelo, v.anio].filter(Boolean).join(' ');
+const nombreAuto = v => [marcaBonita(v.marca), v.modelo, v.anio].filter(Boolean).join(' ');
 const MODELOS = {
   'Toyota':['Corolla','Yaris','Camry','Prius','Hilux','RAV4','Rush','Avanza','Fortuner','Land Cruiser Prado','Hiace'],
   'Hyundai':['Accent','Elantra','Grand i10','i10','Sonata','Creta','Kona','Tucson','Santa Fe','Venue','H1'],
@@ -275,14 +280,43 @@ function normalizar(texto, lista){
   return hit || t.charAt(0).toUpperCase() + t.slice(1);
 }
 function marcaConocida(m){ return Object.keys(MODELOS).find(k=>k.toLowerCase()===String(m||'').trim().toLowerCase()); }
-function actualizarModelos(){
+const OTRO = '__otro';
+const marcaBonita = m => marcaConocida(m) || m;
+/* Un dato está incompleto si tiene menos de 3 letras (por ejemplo "c" o "g") */
+const incompleto = t => String(t||'').trim().length < 3;
+/* Llena una lista desplegable; si el valor guardado no está en la lista, elige "Otro" y lo muestra para escribirlo */
+function llenarLista(campo, opciones, valor, textoElige, textoOtro){
+  const sel = document.getElementById('f_'+campo+'_sel'), inp = document.getElementById('f_'+campo);
+  const v = String(valor||'').trim();
+  const hit = opciones.find(x=>x.toLowerCase()===v.toLowerCase());
+  sel.innerHTML = `<option value="">${textoElige}</option>` + opciones.map(x=>`<option>${esc(x)}</option>`).join('') + `<option value="${OTRO}">${textoOtro}</option>`;
+  if(hit){ sel.value = hit; inp.value = hit; inp.hidden = true; }
+  else if(v || !opciones.length){ sel.value = OTRO; inp.value = v; inp.hidden = false; }
+  else { sel.value = ''; inp.value = ''; inp.hidden = true; }
+}
+function llenarModelos(valor){
   const m = marcaConocida(document.getElementById('f_marca').value);
-  const lista = m ? MODELOS[m] : Object.values(MODELOS).flat();
-  document.getElementById('dl_modelos').innerHTML = lista.map(x=>`<option value="${esc(x)}">`).join('');
+  llenarLista('modelo', m ? MODELOS[m] : [], valor, m ? `Elige el modelo de ${m}` : 'Elige primero la marca', 'Otro modelo (escribirlo)…');
+}
+function cambioLista(campo){
+  const sel = document.getElementById('f_'+campo+'_sel'), inp = document.getElementById('f_'+campo);
+  if(sel.value === OTRO){ inp.hidden = false; inp.value = ''; inp.focus(); }
+  else { inp.hidden = true; inp.value = sel.value; }
+  if(campo === 'marca') llenarModelos('');
+}
+function elegirColor(n){
+  const inp = document.getElementById('f_color');
+  if(n === OTRO){ inp.hidden = false; inp.value = ''; inp.focus(); }
+  else { inp.hidden = true; inp.value = n; }
+  marcarColor();
 }
 function marcarColor(){
-  const v = document.getElementById('f_color').value.trim().toLowerCase();
-  document.querySelectorAll('#colores button').forEach(b=>b.classList.toggle('on', b.dataset.c.toLowerCase()===v));
+  const inp = document.getElementById('f_color');
+  const v = inp.value.trim().toLowerCase();
+  const conocido = COLORES.some(([n])=>n.toLowerCase()===v);
+  if(v && !conocido) inp.hidden = false;
+  document.querySelectorAll('#colores button').forEach(b=>b.classList.toggle('on',
+    b.dataset.c === OTRO ? !inp.hidden : b.dataset.c.toLowerCase()===v));
 }
 
 /* ---------- cálculos ---------- */
@@ -450,8 +484,8 @@ function errorGuardar(e){
 function reemplazar(v){ const i = data.findIndex(x=>x.id===v.id); if(i>=0) data[i]=v; else data.push(v); }
 
 /* ---------- formulario ---------- */
-document.getElementById('dl_marcas').innerHTML = Object.keys(MODELOS).map(x=>`<option value="${x}">`).join('');
-document.getElementById('colores').innerHTML = COLORES.map(([n,h])=>`<button type="button" data-c="${n}" onclick="document.getElementById('f_color').value='${n}';marcarColor()"><span class="punto" style="--c:${h}"></span>${n}</button>`).join('');
+document.getElementById('colores').innerHTML = COLORES.map(([n,h])=>`<button type="button" data-c="${n}" onclick="elegirColor('${n}')"><span class="punto" style="--c:${h}"></span>${n}</button>`).join('')
+  + `<button type="button" data-c="${OTRO}" onclick="elegirColor(OTRO)">Otro…</button>`;
 const CAMPOS = ['id','nombre','documento','telefono','direccion','marca','modelo','color','placa','tarifa','fechaInicio'];
 function abrirForm(id){
   const f = document.getElementById('vehForm');
@@ -474,8 +508,13 @@ function abrirForm(id){
   preview();
   cerrar('ovDetalle');
   abrir('ovForm');
-  actualizarModelos(); marcarColor();
+  const marcaGuardada = f.elements.marca.value, modeloGuardado = f.elements.modelo.value;
+  llenarLista('marca', Object.keys(MODELOS), marcaGuardada, 'Elige la marca', 'Otra marca (escribirla)…');
+  llenarModelos(modeloGuardado);
+  document.getElementById('f_color').hidden = true; marcarColor();
   f.elements.nombre.focus();
+  // si el vehículo tiene datos incompletos, lleva directo a esa parte
+  if(v && (incompleto(v.modelo) || incompleto(v.color))) document.getElementById('f_marca_sel').scrollIntoView({block:'center'});
 }
 function leerForm(){
   const f = document.getElementById('vehForm'); const o = {};
@@ -530,6 +569,14 @@ async function guardarVehiculo(e){
   o.marca = normalizar(o.marca, Object.keys(MODELOS));
   o.modelo = normalizar(o.modelo, MODELOS[marcaConocida(o.marca)] || Object.values(MODELOS).flat());
   o.color = normalizar(o.color, COLORES.map(c=>c[0]));
+  for(const [k, nom, foco] of [['marca','la marca','f_marca_sel'],['modelo','el modelo','f_modelo_sel'],['color','el color','f_color']]){
+    if(incompleto(o[k])){
+      toast(`Escribe ${nom} completo (por ejemplo: ${k==='marca'?'Toyota':k==='modelo'?'Corolla':'Gris'}).`);
+      const el = document.getElementById(document.getElementById('f_'+k).hidden ? foco : 'f_'+k);
+      if(el && !el.hidden) el.focus();
+      return;
+    }
+  }
   o.tarifa = +o.tarifa;
   lsSet('vehiculos_tarifa', o.tarifa);
   const base = o.id ? data.find(x=>x.id===o.id) : null;
@@ -599,8 +646,10 @@ function verDetalle(id){
     </div>
 
     <div class="section"><h4>🚗 Vehículo</h4>
+      ${incompleto(v.modelo) || incompleto(v.color) ? `<div class="incompleto"><span>⚠️ Falta completar ${[incompleto(v.modelo)?'el modelo':'', incompleto(v.color)?'el color':''].filter(Boolean).join(' y ')} de este vehículo.</span>
+        <button class="small primary" onclick="abrirForm('${v.id}')">Completar ahora</button></div>` : ''}
       <div class="info">
-        ${fila('Marca', esc(v.marca))}
+        ${fila('Marca', esc(marcaBonita(v.marca)))}
         ${fila('Modelo', esc(v.modelo))}
         ${fila('Color', punto(v.color)+esc(v.color))}
         ${fila('Placa', `<span class="placa">${esc(v.placa)}</span>`)}
