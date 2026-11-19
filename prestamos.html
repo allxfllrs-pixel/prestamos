@@ -249,6 +249,10 @@ tr.clic:hover td{background:var(--soft)}
       <input type="hidden" id="pr_id">
       <div><label for="pr_nombre">Nombre *</label><input id="pr_nombre" required autocomplete="off"></div>
       <div><label for="pr_tel">Teléfono</label><input id="pr_tel" type="tel"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="pr_monto" id="pr_montoLbl">💰 Dinero que le entregas</label><input id="pr_monto" type="number" min="0" step="any" placeholder="100000" style="font-weight:700"></div>
+        <div><label for="pr_fecha">Fecha de entrega</label><input id="pr_fecha" type="date"></div>
+      </div>
       <div><label for="pr_notas">Notas</label><textarea id="pr_notas" placeholder="Cómo se reparten la ganancia, acuerdos..."></textarea></div>
       <div class="actions" style="margin-top:4px">
         <button type="button" class="danger" id="prBorrar" onclick="borrarPrestador()" hidden>Eliminar</button>
@@ -472,11 +476,12 @@ function renderPanelPrestador(pr){
     </div>
     <div class="stats">
       <div class="stat"><div class="l">Le entregaste</div><div class="v">${money(k.neto)}</div>
-        <div class="phone">${k.devuelto>0.01 ? `${money(k.entregado)} − ${money(k.devuelto)} devuelto` : `${(pr.entregas||[]).length} entrega${(pr.entregas||[]).length===1?'':'s'}`}</div></div>
+        <div class="phone">${!(pr.entregas||[]).length ? `<button class="small primary" type="button" style="margin-top:4px" onclick="abrirEntrega('${pr.id}','entrega')">💰 Poner cuánto le di</button>`
+          : k.devuelto>0.01 ? `${money(k.entregado)} − ${money(k.devuelto)} devuelto` : `${(pr.entregas||[]).length} entrega${(pr.entregas||[]).length===1?'':'s'}`}</div></div>
       <div class="stat"><div class="l">Prestado a clientes</div><div class="v">${money(k.prestadoActivo)}</div>
         <div class="phone">${k.activos.length} préstamo${k.activos.length===1?'':'s'} activo${k.activos.length===1?'':'s'}</div></div>
-      <div class="stat"><div class="l">Debe tener en mano</div><div class="v" style="color:${k.enMano<-0.01?'var(--danger)':'inherit'}">${money(k.enMano)}</div>
-        <div class="phone">${k.enMano<-0.01 ? 'Prestó más de lo que le diste' : 'Sin prestar + lo ya cobrado'}</div></div>
+      <div class="stat"><div class="l">Debe tener en mano</div><div class="v" style="color:${k.enMano<-0.01 && (pr.entregas||[]).length?'var(--danger)':'inherit'}">${(pr.entregas||[]).length ? money(k.enMano) : '—'}</div>
+        <div class="phone">${!(pr.entregas||[]).length ? 'Falta poner cuánto le diste' : k.enMano<-0.01 ? 'Prestó más de lo que le diste' : 'Sin prestar + lo ya cobrado'}</div></div>
       <div class="stat"><div class="l">Por cobrar</div><div class="v">${money(k.porCobrar)}</div>
         <div class="phone" style="color:${k.vencido>0.01?'var(--danger)':'inherit'}">${k.vencido>0.01 ? `${money(k.vencido)} vencido · ${k.atrasados} atrasado${k.atrasados===1?'':'s'}` : 'Nadie atrasado'}</div></div>
       <div class="stat"><div class="l">Ya cobrado</div><div class="v" style="color:var(--ok)">${money(k.cobrado)}</div></div>
@@ -536,6 +541,9 @@ function abrirPrestador(id){
   document.getElementById('pr_nombre').value = pr ? pr.nombre : 'Prestador ' + (prestadores.length + 1);
   document.getElementById('pr_tel').value = pr ? telParaForm(pr.telefono) : '';
   document.getElementById('pr_notas').value = pr ? (pr.notas || '') : '';
+  document.getElementById('pr_monto').value = '';
+  document.getElementById('pr_fecha').value = isoF(hoy());
+  document.getElementById('pr_montoLbl').textContent = pr ? '💰 Entregarle más dinero (opcional)' : '💰 Dinero que le entregas';
   document.getElementById('prBorrar').hidden = !pr;
   abrir('ovPrestador');
   const n = document.getElementById('pr_nombre'); n.focus(); n.select();
@@ -548,13 +556,16 @@ async function guardarPrestador(e){
   const telefono = document.getElementById('pr_tel').value.trim();
   const base = id ? prestadores.find(x=>x.id===id) : {id:'pr_'+uid(), tipo:'prestador', entregas:[], creado:new Date().toISOString()};
   const pr = {...base, nombre, telefono: telefono ? formatoTel(telefono) : '', notas: document.getElementById('pr_notas').value.trim()};
+  const monto = +document.getElementById('pr_monto').value;
+  if(monto > 0) pr.entregas = [...(base.entregas||[]), {id:uid(), tipo:'entrega', monto,
+    fecha: document.getElementById('pr_fecha').value || isoF(hoy()), nota:''}];
   const btn = document.getElementById('prBtn'); btn.disabled = true;
   try{
     await guardarDoc(pr);
     const i = prestadores.findIndex(x=>x.id===pr.id); if(i>=0) prestadores[i] = pr; else prestadores.push(pr);
     cerrar('ovPrestador');
     cartera = pr.id; lsSet('prestamos_cartera', cartera);
-    render(); toast(id ? 'Prestador guardado' : `Listo. Ahora registra cuánto le entregas a ${pr.nombre}.`);
+    render(); toast(monto > 0 ? `${pr.nombre}: entrega de ${money(monto)} registrada` : 'Prestador guardado');
   }catch(err){ errorGuardar(err); }
   finally{ btn.disabled = false; }
 }
