@@ -119,6 +119,17 @@ textarea{resize:vertical;min-height:60px}
 .check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:14px;cursor:pointer;margin:0}
 .check input{width:auto;margin:0}
 .cargos td{vertical-align:middle}
+.calmes{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calmes b{font-family:var(--f-head);font-size:17px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .dn{text-align:center;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;padding-bottom:2px}
+.cal button{aspect-ratio:1/1;padding:0;display:grid;place-items:center;font-weight:600;font-variant-numeric:tabular-nums;border-radius:10px;position:relative;min-width:0}
+.cal button.hoy{outline:2px solid var(--day-hoy);outline-offset:-2px}
+.cal button.on{background:var(--day-libre);border-color:var(--day-libre);color:var(--text)}
+.cal button.on::after{content:"🌴";position:absolute;font-size:9px;top:1px;right:2px}
+.cal button.pag:not(.on){border-bottom:3px solid var(--day-pag)}
+.cal button.deb:not(.on){border-bottom:3px solid var(--day-deb)}
+.cal button:disabled{opacity:.3;cursor:default}
 .libres{display:flex;gap:6px;flex-wrap:wrap}
 .libres span{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:20px;padding:3px 4px 3px 10px;font-size:13px}
 .libres button{padding:2px 8px;font-size:12px;border-radius:20px}
@@ -248,15 +259,23 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <!-- Día libre -->
 <div class="overlay" id="ovLibre">
   <div class="modal chico">
-    <div class="head"><h2>🌴 Día libre</h2><button class="small" onclick="cerrar('ovLibre')" aria-label="Cerrar">✕</button></div>
+    <div class="head"><h2>🌴 Días libres</h2><button class="small" onclick="cerrar('ovLibre')" aria-label="Cerrar">✕</button></div>
     <form id="libreForm" onsubmit="guardarDiaLibre(event)" style="display:grid;gap:10px">
       <div id="libreQuien" class="preview"></div>
-      <div><label for="lb_fecha">¿Qué día no se le cobra?</label><input id="lb_fecha" type="date" required oninput="revisarDiaLibre()"></div>
-      <div class="rapidos" id="lbRapidos"></div>
+      <div class="calmes">
+        <button type="button" class="small" onclick="moverMesLibre(-1)" aria-label="Mes anterior">‹</button>
+        <b id="lbMes"></b>
+        <button type="button" class="small" onclick="moverMesLibre(1)" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="cal" id="lbCal" role="grid"></div>
+      <div>
+        <label>Marcar de una vez en este mes</label>
+        <div class="rapidos" id="lbRapidos"></div>
+      </div>
       <div id="libreAviso" class="preview"></div>
       <div class="actions" style="margin-top:0">
         <button type="button" onclick="cerrar('ovLibre')">Cancelar</button>
-        <button type="submit" class="primary" id="lbBtn">Dar día libre</button>
+        <button type="submit" class="primary" id="lbBtn">Guardar días libres</button>
       </div>
     </form>
   </div>
@@ -449,7 +468,7 @@ function renderHoy(activos, cobHoy, deudaTotal){
       </div>
       <div class="btns">
         <button class="small primary" onclick="abonar('${v.id}','dia')">${c.libreHoy?'💵 Abonar':'✓ Pagó hoy'} · ${money(c.tarifaHoy)}</button>
-        ${!c.libreHoy ? `<button class="small" onclick="diaLibre('${v.id}')">🌴 Día libre</button>` : ''}
+        <button class="small" onclick="diaLibre('${v.id}')">🌴 Días libres</button>
         ${atrasado > 0.01 ? `<button class="small" onclick="abonar('${v.id}',true)">Pagó todo · ${money(c.deuda)}</button>` : ''}
       </div>
     </div>`;
@@ -517,7 +536,7 @@ function render(){
         <span>Últimos 14 días</span>
         ${!(v.estado==='finalizado' && c.deuda<=0.01) ? `<span class="botones">
           <button class="small" onclick="event.stopPropagation();abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar':'Adelantar pago'}</button>
-          ${v.estado!=='finalizado'?`<button class="small" onclick="event.stopPropagation();diaLibre('${v.id}')">🌴 Día libre</button>`:''}
+          ${v.estado!=='finalizado'?`<button class="small" onclick="event.stopPropagation();diaLibre('${v.id}')">🌴 Días libres</button>`:''}
           ${c.deuda>0.01?`<button class="small primary" onclick="event.stopPropagation();abonar('${v.id}',true)">✓ Pagó todo</button>`:''}
         </span>`:''}
       </div>
@@ -711,7 +730,7 @@ function verDetalle(id){
     <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary" onclick="abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
       ${c.deuda>0.01?`<button onclick="abonar('${v.id}',true)">✓ Pagó todo (${money(c.deuda)})</button>`:''}
-      ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Día libre</button>`:''}
+      ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Días libres</button>`:''}
     </div>`:''}
 
     <div class="section">
@@ -890,46 +909,91 @@ function textoCargosWhatsApp(v, yaDebe){
 /* ---------- día libre: un día (el que sea) en que no se cobra la tarifa ---------- */
 let libreId = null;
 const lunesDe = d => addDays(d, -((d.getDay()+6)%7));   // semana de lunes a domingo
+/* Calendario del mes: se tocan los días para marcarlos/desmarcarlos y se guarda todo junto */
+let libreSel = new Set(), libreMes = null;
+const NOM_DIAS = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
 function diaLibre(id){
   const v = data.find(x=>x.id===id); if(!v) return;
   libreId = id;
   const c = calc(v);
-  document.getElementById('libreQuien').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>Ese día no se le cobra la tarifa de ${money(c.tarifaHoy)}.`;
-  const h = hoy(), opciones = [['Hoy', h], ['Mañana', addDays(h,1)], ['Ayer', addDays(h,-1)]];
-  document.getElementById('lbRapidos').innerHTML = opciones.map(([t,d])=>`<button type="button" onclick="document.getElementById('lb_fecha').value='${isoF(d)}';revisarDiaLibre()">${t}</button>`).join('');
-  document.getElementById('lb_fecha').value = isoF(c.libreHoy ? addDays(h,1) : h);
-  revisarDiaLibre();
+  libreSel = new Set(v.diasLibresFechas || []);
+  const h = hoy();
+  libreMes = new Date(h.getFullYear(), h.getMonth(), 1);
+  document.getElementById('libreQuien').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>Toca los días que le das libre: esos días no se le cobra la tarifa de ${money(c.tarifaHoy)}.`;
+  pintarCalLibre();
   abrir('ovLibre');
 }
-function revisarDiaLibre(){
+function moverMesLibre(n){ libreMes = new Date(libreMes.getFullYear(), libreMes.getMonth()+n, 1); pintarCalLibre(); }
+/* Días del mes que se pueden marcar (dentro del alquiler) */
+function diasMesLibre(v){
+  const out = [], fin = v.estado==='finalizado' && v.fechaFin ? v.fechaFin : null;
+  for(let d = new Date(libreMes); d.getMonth() === libreMes.getMonth(); d = addDays(d,1)){
+    const iso = isoF(d);
+    out.push({d, iso, ok: iso >= v.fechaInicio && (!fin || iso <= fin)});
+  }
+  return out;
+}
+function pintarCalLibre(){
   const v = data.find(x=>x.id===libreId); if(!v) return;
-  const el = document.getElementById('libreAviso'), btn = document.getElementById('lbBtn');
-  const val = document.getElementById('lb_fecha').value;
-  if(!val){ el.textContent = 'Elige una fecha.'; btn.disabled = true; return; }
-  const d = parseF(val), libres = v.diasLibresFechas || [];
-  btn.disabled = false;
-  if(val < v.fechaInicio){ el.innerHTML = '<span style="color:var(--danger)">Esa fecha es antes de que empezara el alquiler.</span>'; btn.disabled = true; return; }
-  if(libres.includes(val)){ el.innerHTML = 'Ese día ya es libre.'; btn.disabled = true; return; }
-  const lun = lunesDe(d), dom = addDays(lun, 6);
-  const enSemana = libres.filter(f => f >= isoF(lun) && f <= isoF(dom));
-  const nombre = d.toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
-  el.innerHTML = enSemana.length
-    ? `<span style="color:var(--warn)">⚠️ Esa semana ya tiene día libre: ${enSemana.map(f=>parseF(f).toLocaleDateString('es',{weekday:'long',day:'numeric'})).join(', ')}. Si sigues, tendrá ${enSemana.length+1} días libres esa semana.</span>`
-    : `No se cobrará el <b>${nombre}</b>.`;
+  const c = calc(v), h = hoy();
+  const tMes = libreMes.toLocaleDateString('es',{month:'long', year:'numeric'});
+  document.getElementById('lbMes').textContent = tMes.charAt(0).toUpperCase() + tMes.slice(1);
+  const dias = diasMesLibre(v);
+  let html = ['L','M','M','J','V','S','D'].map(x=>`<div class="dn">${x}</div>`).join('');
+  html += '<div></div>'.repeat((libreMes.getDay()+6)%7);
+  for(const {d, iso, ok} of dias){
+    const est = ok ? estadoDia(c, d) : 'na';
+    const cls = [libreSel.has(iso)?'on':'', +d===+h?'hoy':'', /pag/.test(est)&&!/parc/.test(est)?'pag':'', est==='deb'?'deb':''].join(' ');
+    html += `<button type="button" class="${cls}" ${ok?'':'disabled'} aria-pressed="${libreSel.has(iso)}" data-iso="${iso}"
+      title="${d.toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'})}">${d.getDate()}</button>`;
+  }
+  const cal = document.getElementById('lbCal');
+  cal.innerHTML = html;
+  cal.querySelectorAll('button[data-iso]').forEach(b => b.onclick = () => {
+    const iso = b.dataset.iso;
+    libreSel.has(iso) ? libreSel.delete(iso) : libreSel.add(iso);
+    pintarCalLibre();
+  });
+  // botones para marcar de una vez: todos los domingos, sábados, etc. del mes (si ya están todos, los quita)
+  document.getElementById('lbRapidos').innerHTML = [6,5,0,1,2,3,4].map(i => {
+    const delDia = dias.filter(x => x.ok && (x.d.getDay()+6)%7 === i);
+    if(!delDia.length) return '';
+    const todos = delDia.every(x => libreSel.has(x.iso));
+    return `<button type="button" class="${todos?'primary':''}" data-wd="${i}">${todos?'✓ ':''}Todos los ${NOM_DIAS[i]}${/s$/.test(NOM_DIAS[i])?'':'s'}</button>`;
+  }).join('') + (dias.some(x=>x.ok && libreSel.has(x.iso)) ? '<button type="button" data-wd="x">Limpiar mes</button>' : '');
+  document.querySelectorAll('#lbRapidos button').forEach(b => b.onclick = () => {
+    const wd = b.dataset.wd;
+    if(wd === 'x'){ dias.forEach(x => libreSel.delete(x.iso)); pintarCalLibre(); return; }
+    const delDia = dias.filter(x => x.ok && (x.d.getDay()+6)%7 === +wd);
+    const todos = delDia.every(x => libreSel.has(x.iso));
+    delDia.forEach(x => todos ? libreSel.delete(x.iso) : libreSel.add(x.iso));
+    pintarCalLibre();
+  });
+  // resumen de cambios
+  const antes = new Set(v.diasLibresFechas || []);
+  const nuevos = [...libreSel].filter(f => !antes.has(f)), quitados = [...antes].filter(f => !libreSel.has(f));
+  const enMes = dias.filter(x => libreSel.has(x.iso));
+  const ahorro = enMes.reduce((t,x) => t + tarifaEn(c.tarifas, x.d), 0);
+  document.getElementById('libreAviso').innerHTML =
+    `<b>${enMes.length}</b> día${enMes.length===1?'':'s'} libre${enMes.length===1?'':'s'} en ${libreMes.toLocaleDateString('es',{month:'long'})}` +
+    (enMes.length ? ` · no se le cobran <b>${money(ahorro)}</b>` : '') +
+    (nuevos.length || quitados.length ? `<br><span style="color:var(--warn)">Sin guardar: ${nuevos.length ? `+${nuevos.length} marcado${nuevos.length===1?'':'s'}` : ''}${nuevos.length && quitados.length ? ', ' : ''}${quitados.length ? `${quitados.length} quitado${quitados.length===1?'':'s'}` : ''}</span>` : '');
+  document.getElementById('lbBtn').disabled = !nuevos.length && !quitados.length;
 }
 async function guardarDiaLibre(e){
   e.preventDefault();
   const base = data.find(x=>x.id===libreId); if(!base) return;
-  const val = document.getElementById('lb_fecha').value; if(!val) return;
-  const v = {...base, diasLibresFechas: [...new Set([...(base.diasLibresFechas||[]), val])].sort()};
+  const antes = new Set(base.diasLibresFechas || []);
+  const nuevos = [...libreSel].filter(f => !antes.has(f)).length, quitados = [...antes].filter(f => !libreSel.has(f)).length;
+  const v = {...base, diasLibresFechas: [...libreSel].sort()};
+  if(!v.diasLibresFechas.length) delete v.diasLibresFechas;
   const btn = document.getElementById('lbBtn'); btn.disabled = true;
   try{
     await guardarDoc(v); reemplazar(v); render();
     if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(v.id);
     cerrar('ovLibre');
-    toast('🌴 Día libre: ' + parseF(val).toLocaleDateString('es',{weekday:'long', day:'numeric', month:'short'}) + ' — no se cobra');
-  }catch(err){ errorGuardar(err); }
-  finally{ btn.disabled = false; }
+    toast('🌴 Días libres guardados' + (nuevos ? ` · ${nuevos} nuevo${nuevos===1?'':'s'}` : '') + (quitados ? ` · ${quitados} quitado${quitados===1?'':'s'}` : ''));
+  }catch(err){ errorGuardar(err); btn.disabled = false; }
 }
 async function quitarDiaLibre(id, fecha){
   const base = data.find(x=>x.id===id); if(!base) return;
