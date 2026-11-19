@@ -117,6 +117,21 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);background:var(--toast);color:var(--toast-text);padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}}
+/* Prestadores (personas a las que les doy dinero para que lo presten) */
+.carteras{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.carteras button{white-space:nowrap;flex:none}
+.carteras button.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.carteras .nuevo{border-style:dashed;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.panel .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.panel h2{margin:0;font-size:20px}
+.panel .stats{margin:12px 0 0}
+.panel .stat{box-shadow:none;background:var(--soft);border-color:transparent}
+.panel .stat .v{font-size:17px;white-space:nowrap}
+.panel .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+tr.clic{cursor:pointer}
+tr.clic:hover td{background:var(--soft)}
+.de{font-size:12px;color:var(--muted);margin-top:4px}
 @media (max-width:600px){
   .form{grid-template-columns:1fr}
   .list{grid-template-columns:1fr}
@@ -136,6 +151,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <main class="wrap gut">
   <div class="aviso" id="aviso" hidden></div>
   <div id="respaldoAviso" hidden></div>
+  <div class="carteras" id="carteras" role="tablist" aria-label="Cartera"></div>
+  <div id="panelPrestador" hidden></div>
   <div class="stats" id="stats"></div>
   <div class="toolbar">
     <input id="buscar" placeholder="Buscar por nombre o teléfono..." oninput="render()">
@@ -154,6 +171,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <div class="head"><h2 id="formTitle">Nuevo préstamo</h2><button class="small" onclick="cerrar('ovForm')">✕</button></div>
     <form class="form" id="loanForm" onsubmit="guardarPrestamo(event)">
       <input type="hidden" name="id" id="f_id">
+      <div class="full" id="bloquePrest" hidden><label for="f_prest">¿Quién presta este dinero?</label>
+        <select name="prestadorId" id="f_prest"></select></div>
       <div class="full"><label for="f_nombre">Nombre completo *</label><input name="nombre" id="f_nombre" required></div>
       <div><label for="f_tel">Teléfono *</label><input name="telefono" id="f_tel" type="tel" required></div>
       <div><label for="f_doc">Cédula / Documento</label><input name="documento" id="f_doc"></div>
@@ -222,12 +241,54 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   </div>
 </div>
 
+<!-- Prestador (crear / editar) -->
+<div class="overlay" id="ovPrestador">
+  <div class="modal chico">
+    <div class="head"><h2 id="prTitulo">Nuevo prestador</h2><button class="small" type="button" onclick="cerrar('ovPrestador')" aria-label="Cerrar">✕</button></div>
+    <form id="prForm" onsubmit="guardarPrestador(event)" style="display:grid;gap:10px">
+      <input type="hidden" id="pr_id">
+      <div><label for="pr_nombre">Nombre *</label><input id="pr_nombre" required autocomplete="off"></div>
+      <div><label for="pr_tel">Teléfono</label><input id="pr_tel" type="tel"></div>
+      <div><label for="pr_notas">Notas</label><textarea id="pr_notas" placeholder="Cómo se reparten la ganancia, acuerdos..."></textarea></div>
+      <div class="actions" style="margin-top:4px">
+        <button type="button" class="danger" id="prBorrar" onclick="borrarPrestador()" hidden>Eliminar</button>
+        <button type="button" onclick="cerrar('ovPrestador')">Cancelar</button>
+        <button type="submit" class="primary" id="prBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Dinero entregado a un prestador (o que me devolvió) -->
+<div class="overlay" id="ovEntrega">
+  <div class="modal chico">
+    <div class="head"><h2 id="enTitulo">Entregar dinero</h2><button class="small" type="button" onclick="cerrar('ovEntrega')" aria-label="Cerrar">✕</button></div>
+    <form id="enForm" onsubmit="guardarEntrega(event)" style="display:grid;gap:10px">
+      <input type="hidden" id="en_tipo">
+      <div class="preview" id="en_info"></div>
+      <div><label for="en_monto">Monto *</label><input id="en_monto" type="number" min="0.01" step="any" required style="font-size:20px;font-weight:700"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="en_fecha">Fecha</label><input id="en_fecha" type="date" required></div>
+        <div><label for="en_nota">Nota (opcional)</label><input id="en_nota" placeholder="Efectivo..."></div>
+      </div>
+      <div class="actions" style="margin-top:4px">
+        <button type="button" onclick="cerrar('ovEntrega')">Cancelar</button>
+        <button type="submit" class="primary" id="enBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script src="comun.js"></script>
 <script>
 const COL = 'prestamos';
 let data = [];
+/* Prestadores: se guardan en la misma tabla que los préstamos, con datos.tipo = 'prestador'.
+   Cada préstamo puede llevar prestadorId (si no lo tiene, es mío). */
+let prestadores = [];
+let cartera = lsGet('prestamos_cartera') || 'todos';   // 'todos' | 'yo' | id de un prestador
 let filtro = 'activos';
 let abiertoId = null;
 const puedeEditar = true;   // solo se entra con la clave
@@ -292,9 +353,15 @@ function chip(c){
 }
 
 /* ---------- render principal ---------- */
+function prestadorDe(p){ return p && p.prestadorId ? prestadores.find(x=>x.id===p.prestadorId) : null; }
+function enCartera(p){ return cartera==='todos' || (cartera==='yo' ? !p.prestadorId : p.prestadorId===cartera); }
 function render(){
+  if(cargado && cartera!=='todos' && cartera!=='yo' && !prestadores.some(x=>x.id===cartera)) cartera = 'todos';
+  renderCarteras();
+  const pr = prestadores.find(x=>x.id===cartera);
+  renderPanelPrestador(pr);
   const q = document.getElementById('buscar').value.trim().toLowerCase();
-  const all = data.map(p=>({p,c:calc(p)}));
+  const all = data.filter(enCartera).map(p=>({p,c:calc(p)}));
   const activos = all.filter(x=>x.c.estado!=='done');
   const atrasados = all.filter(x=>x.c.estado==='bad').length;
   const mes = isoF(hoy()).slice(0,7);
@@ -302,8 +369,10 @@ function render(){
   for(const p of data) for(const a of (p.abonos||[])) if(String(a.fecha).slice(0,7)===mes) cobradoMes += +a.monto||0;
   const porCobrar = activos.reduce((t,x)=>t+x.c.saldo,0);
   const vencido = activos.reduce((t,x)=>t+x.c.montoVencido,0);
-  document.title = (atrasados ? `(${atrasados}) ` : '') + 'Mis Préstamos';
-  document.getElementById('stats').innerHTML = `
+  const atrasadosTodos = data.filter(p=>calc(p).estado==='bad').length;
+  document.title = (atrasadosTodos ? `(${atrasadosTodos}) ` : '') + 'Mis Préstamos';
+  document.getElementById('stats').hidden = !!pr;
+  document.getElementById('stats').innerHTML = pr ? '' : `
     <div class="stat"><div class="l">Por cobrar</div><div class="v">${money(porCobrar)}</div><div class="phone">${activos.length} préstamo${activos.length===1?'':'s'} activo${activos.length===1?'':'s'}</div></div>
     <div class="stat"><div class="l">Vencido sin pagar</div><div class="v" style="color:${vencido>0.01?'var(--danger)':'inherit'}">${money(vencido)}</div><div class="phone">${atrasados ? atrasados+' atrasado'+(atrasados===1?'':'s') : 'Nadie atrasado'}</div></div>
     <div class="stat"><div class="l">Cobrado este mes</div><div class="v" style="color:var(--ok)">${money(cobradoMes)}</div></div>`;
@@ -326,11 +395,18 @@ function render(){
   });
   const orden = {bad:0,warn:1,ok:2,done:3};
   lista.sort((a,b)=> orden[a.c.estado]-orden[b.c.estado] || b.c.montoVencido-a.c.montoVencido || (a.c.proxima||0)-(b.c.proxima||0));
-  if(!lista.length){ el.innerHTML = '<div class="empty">No hay resultados.</div>'; return; }
-  el.innerHTML = lista.map(({p,c})=>`
+  if(!lista.length){
+    el.innerHTML = pr && !all.length
+      ? `<div class="empty">${esc(pr.nombre)} todavía no tiene préstamos registrados.<br><br>
+          <button class="primary" onclick="abrirForm()">+ Préstamo de ${esc(pr.nombre)}</button></div>`
+      : '<div class="empty">No hay resultados.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(({p,c})=>{ const de = cartera==='todos' ? prestadorDe(p) : null; return `
     <div class="loan" onclick="verDetalle('${p.id}')">
       <div class="top">
-        <div><h3>${esc(p.nombre)}</h3><div class="phone">📞 ${esc(formatoTel(p.telefono))}</div></div>
+        <div><h3>${esc(p.nombre)}</h3><div class="phone">📞 ${esc(formatoTel(p.telefono))}</div>
+          ${de ? `<div class="de">👤 Prestó: ${esc(de.nombre)}</div>` : ''}</div>
         ${chip(c)}
       </div>
       <div class="grid2">
@@ -340,7 +416,200 @@ function render(){
       </div>
       <div class="bar"><i style="width:${Math.min(100,c.pagado/c.total*100)}%"></i></div>
       ${c.saldo>0.01?`<div class="pie"><button class="small" onclick="event.stopPropagation();abonarPrestamo('${p.id}')">💵 Abonar</button></div>`:''}
-    </div>`).join('');
+    </div>`; }).join('');
+}
+
+/* ---------- carteras: Todos / Míos / cada prestador ---------- */
+function renderCarteras(){
+  const el = document.getElementById('carteras');
+  const n = f => data.filter(p => f(p) && calc(p).estado!=='done').length;
+  const boton = (c, texto, cuenta) => `<button type="button" role="tab" aria-selected="${cartera===c}" class="${cartera===c?'on':''}" data-c="${c}">${texto}${cuenta!==undefined?` · ${cuenta}`:''}</button>`;
+  el.innerHTML = (prestadores.length
+      ? boton('todos', 'Todos') + boton('yo', '🙋 Míos', n(p=>!p.prestadorId)) +
+        prestadores.map(x => boton(x.id, '👤 ' + esc(x.nombre), n(p=>p.prestadorId===x.id))).join('')
+      : '') +
+    `<button type="button" class="nuevo" onclick="abrirPrestador()">+ Prestador</button>`;
+}
+document.getElementById('carteras').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-c]'); if(!b) return;
+  cartera = b.dataset.c; lsSet('prestamos_cartera', cartera);
+  render();
+});
+
+function calcPrestador(pr){
+  const lista = data.filter(p=>p.prestadorId===pr.id).map(p=>({p,c:calc(p)}));
+  const entregas = pr.entregas || [];
+  const entregado = entregas.filter(e=>e.tipo!=='devolucion').reduce((s,e)=>s + +e.monto, 0);
+  const devuelto = entregas.filter(e=>e.tipo==='devolucion').reduce((s,e)=>s + +e.monto, 0);
+  const activos = lista.filter(x=>x.c.estado!=='done');
+  const prestadoTotal = lista.reduce((s,x)=>s+x.c.capital, 0);
+  const cobrado = lista.reduce((s,x)=>s+x.c.pagado, 0);
+  return {
+    lista, activos, entregado, devuelto, neto: entregado - devuelto,
+    prestadoActivo: activos.reduce((s,x)=>s+x.c.capital, 0),
+    porCobrar: activos.reduce((s,x)=>s+x.c.saldo, 0),
+    vencido: activos.reduce((s,x)=>s+x.c.montoVencido, 0),
+    atrasados: activos.filter(x=>x.c.estado==='bad').length,
+    interes: lista.reduce((s,x)=>s+x.c.interes, 0),
+    cobrado,
+    // dinero que debería tener en la mano: lo que le di − lo que me devolvió − lo que prestó + lo que ya le pagaron
+    enMano: entregado - devuelto - prestadoTotal + cobrado
+  };
+}
+function renderPanelPrestador(pr){
+  const el = document.getElementById('panelPrestador');
+  if(!pr){ el.hidden = true; el.innerHTML = ''; return; }
+  const k = calcPrestador(pr);
+  const orden = {bad:0,warn:1,ok:2,done:3};
+  const lista = k.lista.slice().sort((a,b)=> orden[a.c.estado]-orden[b.c.estado] || (a.c.proxima||0)-(b.c.proxima||0));
+  const entregas = (pr.entregas||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  el.hidden = false;
+  el.innerHTML = `<div class="panel">
+    <div class="head">
+      <div style="min-width:0"><h2>👤 ${esc(pr.nombre)}</h2>
+        <div class="phone">${pr.telefono ? '📞 ' + esc(formatoTel(pr.telefono)) + ' · ' : ''}Cartera de préstamos que hace con tu dinero</div></div>
+      <button class="small" type="button" onclick="abrirPrestador('${pr.id}')">✏ Editar nombre</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="l">Le entregaste</div><div class="v">${money(k.neto)}</div>
+        <div class="phone">${k.devuelto>0.01 ? `${money(k.entregado)} − ${money(k.devuelto)} devuelto` : `${(pr.entregas||[]).length} entrega${(pr.entregas||[]).length===1?'':'s'}`}</div></div>
+      <div class="stat"><div class="l">Prestado a clientes</div><div class="v">${money(k.prestadoActivo)}</div>
+        <div class="phone">${k.activos.length} préstamo${k.activos.length===1?'':'s'} activo${k.activos.length===1?'':'s'}</div></div>
+      <div class="stat"><div class="l">Debe tener en mano</div><div class="v" style="color:${k.enMano<-0.01?'var(--danger)':'inherit'}">${money(k.enMano)}</div>
+        <div class="phone">${k.enMano<-0.01 ? 'Prestó más de lo que le diste' : 'Sin prestar + lo ya cobrado'}</div></div>
+      <div class="stat"><div class="l">Por cobrar</div><div class="v">${money(k.porCobrar)}</div>
+        <div class="phone" style="color:${k.vencido>0.01?'var(--danger)':'inherit'}">${k.vencido>0.01 ? `${money(k.vencido)} vencido · ${k.atrasados} atrasado${k.atrasados===1?'':'s'}` : 'Nadie atrasado'}</div></div>
+      <div class="stat"><div class="l">Ya cobrado</div><div class="v" style="color:var(--ok)">${money(k.cobrado)}</div></div>
+      <div class="stat"><div class="l">Intereses</div><div class="v">${money(k.interes)}</div><div class="phone">Ganancia de todos sus préstamos</div></div>
+    </div>
+    <div class="acciones">
+      <button class="primary" type="button" onclick="abrirEntrega('${pr.id}','entrega')">💰 Entregarle dinero</button>
+      <button type="button" onclick="abrirEntrega('${pr.id}','devolucion')">↩ Me devolvió</button>
+      <button type="button" onclick="abrirForm()">+ Préstamo de ${esc(pr.nombre)}</button>
+      ${pr.telefono ? `<a class="btn" href="${linkWhatsApp(pr.telefono, textoResumenPrestador(pr))}" target="_blank" rel="noopener">💬 Enviarle su resumen</a>` : ''}
+    </div>
+    <div class="section">
+      <h4>¿A quién le prestó? (${k.lista.length})</h4>
+      ${k.lista.length ? `<div class="tablewrap"><table>
+        <thead><tr><th>Cliente</th><th class="n">Prestado</th><th>Interés</th><th>Próximo pago</th><th class="n">Cuota</th><th class="n">Saldo</th><th>Estado</th></tr></thead>
+        <tbody>${lista.map(({p,c})=>`<tr class="clic" onclick="verDetalle('${p.id}')">
+          <td><b>${esc(p.nombre)}</b><div class="phone">${fmtF(p.fechaInicio)}</div></td>
+          <td class="n">${money(c.capital)}</td>
+          <td>${c.tasa}% ${p.tipoInteres==='mensual'?'mensual':'único'}</td>
+          <td>${c.proxima ? fmtF(c.proxima) : '—'}</td>
+          <td class="n">${money(c.valorCuota)}</td>
+          <td class="n">${money(c.saldo)}</td>
+          <td>${chip(c)}</td></tr>`).join('')}
+          <tr><td><b>Total</b></td><td class="n"><b>${money(k.lista.reduce((s,x)=>s+x.c.capital,0))}</b></td><td></td><td></td><td></td>
+            <td class="n"><b>${money(k.porCobrar)}</b></td><td></td></tr></tbody>
+      </table></div>` : '<div style="color:var(--muted)">Todavía no ha prestado.</div>'}
+    </div>
+    <div class="section">
+      <h4>Dinero que le has dado (${entregas.length})</h4>
+      ${entregas.length ? `<div class="tablewrap"><table>
+        <thead><tr><th>Fecha</th><th>Movimiento</th><th class="n">Monto</th><th>Nota</th><th></th></tr></thead>
+        <tbody>${entregas.map(e=>`<tr><td>${fmtF(e.fecha)}</td>
+          <td>${e.tipo==='devolucion' ? '↩ Me devolvió' : '💰 Le entregué'}</td>
+          <td class="n" style="color:${e.tipo==='devolucion'?'var(--ok)':'inherit'}">${money(+e.monto)}</td>
+          <td>${esc(e.nota)}</td>
+          <td class="n"><button class="small danger" type="button" onclick="borrarEntrega('${pr.id}','${e.id}')">Borrar</button></td></tr>`).join('')}</tbody>
+      </table></div>` : '<div style="color:var(--muted)">Aún no registras dinero entregado. Toca <b>💰 Entregarle dinero</b>.</div>'}
+    </div>
+    ${pr.notas ? `<div class="section"><h4>Notas</h4><div style="white-space:pre-wrap">${esc(pr.notas)}</div></div>` : ''}
+  </div>`;
+}
+function textoResumenPrestador(pr){
+  const k = calcPrestador(pr);
+  const lineas = k.activos.map(({p,c}) => `• ${p.nombre}: debe ${money(c.saldo)}` +
+    (c.montoVencido>0.01 ? ` (vencido ${money(c.montoVencido)})` : c.proxima ? ` · próximo pago ${fmtF(c.proxima)}` : ''));
+  return `Hola ${pr.nombre}, este es el resumen de tu cartera:\n` +
+    `Te he entregado: ${money(k.neto)}\nPrestado a clientes: ${money(k.prestadoActivo)}\n` +
+    `Por cobrar: ${money(k.porCobrar)}\nYa cobrado: ${money(k.cobrado)}\n` +
+    (lineas.length ? `\nClientes:\n${lineas.join('\n')}` : '');
+}
+
+/* ---------- crear / editar / borrar prestador ---------- */
+function abrirPrestador(id){
+  const pr = id ? prestadores.find(x=>x.id===id) : null;
+  document.getElementById('prTitulo').textContent = pr ? 'Editar prestador' : 'Nuevo prestador';
+  document.getElementById('pr_id').value = pr ? pr.id : '';
+  document.getElementById('pr_nombre').value = pr ? pr.nombre : 'Prestador ' + (prestadores.length + 1);
+  document.getElementById('pr_tel').value = pr ? telParaForm(pr.telefono) : '';
+  document.getElementById('pr_notas').value = pr ? (pr.notas || '') : '';
+  document.getElementById('prBorrar').hidden = !pr;
+  abrir('ovPrestador');
+  const n = document.getElementById('pr_nombre'); n.focus(); n.select();
+}
+async function guardarPrestador(e){
+  e.preventDefault();
+  const id = document.getElementById('pr_id').value;
+  const nombre = document.getElementById('pr_nombre').value.trim();
+  if(!nombre) return;
+  const telefono = document.getElementById('pr_tel').value.trim();
+  const base = id ? prestadores.find(x=>x.id===id) : {id:'pr_'+uid(), tipo:'prestador', entregas:[], creado:new Date().toISOString()};
+  const pr = {...base, nombre, telefono: telefono ? formatoTel(telefono) : '', notas: document.getElementById('pr_notas').value.trim()};
+  const btn = document.getElementById('prBtn'); btn.disabled = true;
+  try{
+    await guardarDoc(pr);
+    const i = prestadores.findIndex(x=>x.id===pr.id); if(i>=0) prestadores[i] = pr; else prestadores.push(pr);
+    cerrar('ovPrestador');
+    cartera = pr.id; lsSet('prestamos_cartera', cartera);
+    render(); toast(id ? 'Prestador guardado' : `Listo. Ahora registra cuánto le entregas a ${pr.nombre}.`);
+  }catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+async function borrarPrestador(){
+  const pr = prestadores.find(x=>x.id===document.getElementById('pr_id').value); if(!pr) return;
+  const n = data.filter(p=>p.prestadorId===pr.id).length;
+  if(n){ toast(`${pr.nombre} tiene ${n} préstamo${n===1?'':'s'}. Cámbialos a otro prestador (✏ Editar préstamo) antes de eliminarlo.`); return; }
+  cerrar('ovPrestador');
+  if(!await confirmar('Eliminar prestador', `¿Eliminar a <b>${esc(pr.nombre)}</b> y su historial de dinero entregado?`, 'Eliminar')) return;
+  try{
+    await rpc('borrar_prestamo', {p_clave:clave||'', p_id:pr.id});
+    prestadores = prestadores.filter(x=>x.id!==pr.id);
+    cartera = 'todos'; lsSet('prestamos_cartera', cartera);
+    render(); toast('Prestador eliminado');
+  }catch(err){ errorGuardar(err); }
+}
+
+/* ---------- dinero entregado / devuelto ---------- */
+function abrirEntrega(prId, tipo){
+  const pr = prestadores.find(x=>x.id===prId); if(!pr) return;
+  const k = calcPrestador(pr);
+  document.getElementById('enForm').reset();
+  document.getElementById('enForm').dataset.pr = prId;
+  document.getElementById('en_tipo').value = tipo;
+  document.getElementById('en_fecha').value = isoF(hoy());
+  document.getElementById('enTitulo').textContent = tipo==='devolucion' ? `${pr.nombre} me devolvió` : `Entregar dinero a ${pr.nombre}`;
+  document.getElementById('en_info').innerHTML = `Le has entregado <b>${money(k.neto)}</b> · debe tener en mano <b>${money(k.enMano)}</b>`;
+  abrir('ovEntrega'); document.getElementById('en_monto').focus();
+}
+async function guardarEntrega(e){
+  e.preventDefault();
+  const f = document.getElementById('enForm');
+  const base = prestadores.find(x=>x.id===f.dataset.pr); if(!base) return;
+  const monto = +document.getElementById('en_monto').value; if(!(monto>0)) return;
+  const mov = {id:uid(), tipo:document.getElementById('en_tipo').value, monto,
+               fecha:document.getElementById('en_fecha').value, nota:document.getElementById('en_nota').value.trim()};
+  const pr = {...base, entregas:[...(base.entregas||[]), mov]};
+  const btn = document.getElementById('enBtn'); btn.disabled = true;
+  try{
+    await guardarDoc(pr);
+    prestadores[prestadores.findIndex(x=>x.id===pr.id)] = pr;
+    cerrar('ovEntrega'); render();
+    toast(mov.tipo==='devolucion' ? 'Devolución registrada' : `Entrega de ${money(monto)} registrada`);
+  }catch(err){ errorGuardar(err); }
+  finally{ btn.disabled = false; }
+}
+async function borrarEntrega(prId, eid){
+  if(!await confirmar('Borrar movimiento','¿Seguro que quieres borrar este movimiento de dinero?','Borrar')) return;
+  const base = prestadores.find(x=>x.id===prId); if(!base) return;
+  const pr = {...base, entregas:(base.entregas||[]).filter(x=>x.id!==eid)};
+  try{
+    await guardarDoc(pr);
+    prestadores[prestadores.findIndex(x=>x.id===pr.id)] = pr;
+    render(); toast('Movimiento borrado');
+  }catch(err){ errorGuardar(err); }
 }
 document.getElementById('filters').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
@@ -406,9 +675,14 @@ function leerFechasManual(){
 function abrirForm(id, irAFechas){
   if(!puedeEditar) return;
   const f = document.getElementById('loanForm');
-  f.reset();
   const p = id ? data.find(x=>x.id===id) : null;
+  const sel = document.getElementById('f_prest');
+  sel.innerHTML = '<option value="">🙋 Yo (mi dinero)</option>' +
+    prestadores.map(x=>`<option value="${x.id}">👤 ${esc(x.nombre)}</option>`).join('');
+  document.getElementById('bloquePrest').hidden = !prestadores.length;
+  f.reset();
   document.getElementById('formTitle').textContent = p ? 'Editar préstamo' : 'Nuevo préstamo';
+  sel.value = p ? (p.prestadorId || '') : (prestadores.some(x=>x.id===cartera) ? cartera : '');
   if(p){
     for(const k of ['id','nombre','telefono','documento','direccion','capital','fechaInicio','tasa','tipoInteres','frecuencia','cuotas','notas'])
       if(f.elements[k]) f.elements[k].value = k==='telefono' ? telParaForm(p[k]) : (p[k] ?? '');
@@ -463,6 +737,7 @@ async function guardarPrestamo(e){
   if(o.id){ p = {...data.find(x=>x.id===o.id), ...o}; }
   else { p = {...o, id: uid(), abonos: [], creado: new Date().toISOString()}; }
   if(!p.fechasManual) delete p.fechasManual;   // fechas automáticas según la frecuencia
+  if(!p.prestadorId) delete p.prestadorId;     // sin prestador = préstamo mío
   const btn = document.getElementById('btnGuardar'); btn.disabled = true;
   try{
     await guardarDoc(p);
@@ -505,6 +780,7 @@ function verDetalle(id){
     </div>
     <div style="margin:10px 0">${chip(c)}</div>
     <div class="info">
+      ${prestadores.length ? `<div><span>Prestado por</span><b>${prestadorDe(p) ? '👤 ' + esc(prestadorDe(p).nombre) : '🙋 Yo'}</b></div>` : ''}
       <div><span>Capital prestado</span><b>${money(c.capital)}</b></div>
       <div><span>Tasa de interés</span><b>${c.tasa}% ${p.tipoInteres==='mensual'?'mensual':'único'}</b></div>
       <div><span>Interés total</span><b>${money(c.interes)}</b></div>
@@ -667,7 +943,7 @@ async function borrarPrestamo(id){
 
 /* ---------- respaldo ---------- */
 function exportar(){
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify([...prestadores, ...data],null,2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'respaldo-prestamos-' + isoF(hoy()) + '.json';
@@ -681,12 +957,15 @@ async function importar(e){
   let d;
   try{ d = JSON.parse(await file.text()); if(!Array.isArray(d)) throw 0; }
   catch(err){ toast('El archivo no es un respaldo válido.'); return; }
-  if(!await confirmar('Restaurar respaldo',`Se cargarán <b>${d.length}</b> préstamos y se reemplazarán los que hay ahora (${data.length}). ¿Continuar?`,'Restaurar')) return;
+  const esPr = x => x && x.tipo === 'prestador';
+  const nPr = d.filter(esPr).length;
+  if(!await confirmar('Restaurar respaldo',`Se cargarán <b>${d.length - nPr}</b> préstamos${nPr ? ` y <b>${nPr}</b> prestador${nPr===1?'':'es'}` : ''} y se reemplazará todo lo que hay ahora (${data.length} préstamos). ¿Continuar?`,'Restaurar')) return;
   toast('Cargando respaldo…');
   try{
-    const nuevos = d.map(p=>({...p, id: (p.id && /^[A-Za-z0-9_\-]{1,64}$/.test(p.id)) ? p.id : uid(), abonos: p.abonos||[]}));
+    const nuevos = d.map(p=>({...p, id: (p.id && /^[A-Za-z0-9_\-]{1,64}$/.test(p.id)) ? p.id : uid(), ...(esPr(p) ? {entregas: p.entregas||[]} : {abonos: p.abonos||[]})}));
     await rpc('restaurar_prestamos', {p_clave:clave||'', p_lista:nuevos});
-    data = nuevos; render(); toast(`Respaldo restaurado: ${nuevos.length} préstamos`);
+    prestadores = nuevos.filter(esPr); data = nuevos.filter(x=>!esPr(x));
+    render(); toast(`Respaldo restaurado: ${data.length} préstamos`);
   }catch(err){ errorGuardar(err); }
 }
 
@@ -715,7 +994,11 @@ async function cargar(){
     aviso('');
     const firma = filas.map(f=>f.id+'@'+f.actualizado).join('|');
     if(firma === versionDatos && cargado) return;
-    versionDatos = firma; data = filas.map(f=>({...f.datos, id:f.id})); cargado = true;
+    versionDatos = firma;
+    const todo = filas.map(f=>({...f.datos, id:f.id}));
+    prestadores = todo.filter(x=>x.tipo==='prestador').sort((a,b)=>String(a.creado||'').localeCompare(String(b.creado||'')));
+    data = todo.filter(x=>x.tipo!=='prestador');
+    cargado = true;
     render();
     const ov = document.getElementById('ovDetalle');
     if(ov.classList.contains('open') && abiertoId) verDetalle(abiertoId);
@@ -725,6 +1008,7 @@ async function cargar(){
   }
 }
 prepararCampoTel(document.getElementById('f_tel'));
+prepararCampoTel(document.getElementById('pr_tel'));
 montarMenu('menuMas', [
   ['⬇ Descargar copia de seguridad', exportar],
   ['⬆ Restaurar copia de seguridad', () => document.getElementById('fileImport').click()],

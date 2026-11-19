@@ -129,7 +129,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px calc(1
 // Conteos en vivo: solo si este dispositivo ya tiene la clave (si falla, las tarjetas funcionan igual)
 async function contar(tabla, el, uno, varios){
   try{
-    const n = (await leerFilas(tabla)).length;
+    const n = (await leerFilas(tabla)).filter(f => !(f.datos && f.datos.tipo === 'prestador')).length;
     document.getElementById(el).textContent = n + ' ' + (n===1 ? uno : varios);
   }catch(e){}
 }
