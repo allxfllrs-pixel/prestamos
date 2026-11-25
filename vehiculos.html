@@ -455,33 +455,64 @@ function ingresoRango(v, desde, hasta, libres){
   }
   return {total, bruto, cobrables, nLibres, rebajado: bruto - total};
 }
-/* Cuánto te deben pagar por semana y por mes: el total sin días libres y el total rebajando
-   los días libres marcados en ese período (semana o mes completo, a la tarifa de cada día). */
-function seccionIngreso(v){
+/* Resumen de un período (semana o mes) solo con los días del alquiler:
+   bruto = tarifa de todos los días; se rebajan los días libres y los permisos (días libres con motivo);
+   pagado = cuánto de lo que toca en el período ya está cubierto por los pagos. Los pagos cubren
+   primero los días más viejos, igual que en calc(), así que si debe días anteriores eso va primero. */
+function resumenPeriodo(v, desde, hasta){
+  const tarifas = listaTarifas(v), libres = new Set(v.diasLibresFechas || []);
+  const pagado = (v.pagos||[]).reduce((t,p)=>t + (+p.monto||0), 0);
+  const fin = v.estado==='finalizado' && v.fechaFin ? parseF(v.fechaFin) : null;
+  const a = isoF(desde), b = isoF(hasta);
+  const r = {bruto:0, total:0, pagado:0, falta:0, dias:0, cobrables:0, libres:0, libresMonto:0, permisos:0, permisosMonto:0, listaPermisos:[], inicio:null};
+  let cum = 0;
+  for(let d = parseF(v.fechaInicio), g = 0; g < 6000; g++, d = addDays(d,1)){
+    const iso = isoF(d);
+    if(iso > b || (fin && d > fin)) break;
+    const m = tarifaEn(tarifas, d), libre = libres.has(iso);
+    const antes = cum; if(!libre) cum += m;
+    if(iso < a) continue;
+    if(!r.inicio) r.inicio = iso;
+    r.dias++; r.bruto += m;
+    if(libre){
+      if(motivoDe(v, iso)){ r.permisos++; r.permisosMonto += m; r.listaPermisos.push(iso); }
+      else { r.libres++; r.libresMonto += m; }
+    } else {
+      r.cobrables++; r.total += m;
+      r.pagado += Math.min(m, Math.max(0, pagado - antes));
+    }
+  }
+  r.falta = Math.max(0, r.total - r.pagado);
+  return r;
+}
+const cortaF = d => (typeof d === 'string' ? parseF(d) : d).toLocaleDateString('es',{day:'numeric', month:'short'});
+function periodosIngreso(){
   const h = hoy(), lun = lunesDe(h), dom = addDays(lun, 6);
-  const corta = d => d.toLocaleDateString('es',{day:'numeric', month:'short'});
   const nomMes = d => { const t = d.toLocaleDateString('es',{month:'long'}); return t.charAt(0).toUpperCase()+t.slice(1); };
-  const filas = [['Esta semana', lun, dom, `${corta(lun)} – ${corta(dom)}`]];
+  const out = [{t:'Esta semana', a:lun, b:dom, rango:`${cortaF(lun)} – ${cortaF(dom)}`}];
   for(let i = 0; i < 2; i++){
     const a = new Date(h.getFullYear(), h.getMonth()+i, 1), b = new Date(h.getFullYear(), h.getMonth()+i+1, 0);
-    filas.push([i ? 'Próximo mes' : 'Este mes', a, b, nomMes(a)]);
+    out.push({t: i ? 'Próximo mes' : 'Este mes', a, b, rango: nomMes(a)});
   }
-  const vCompleto = {...v, fechaInicio:'0000-01-01', estado:'activo'};   // período completo, sin importar la fecha de entrega
-  const hayLibres = (v.diasLibresFechas||[]).length > 0;
-  return `<div class="section"><h4>💰 Cuánto te deben pagar</h4>
+  return out;
+}
+function seccionIngreso(v){
+  const filas = periodosIngreso().map(p => ({...p, r: resumenPeriodo(v, p.a, p.b)})).filter(p => p.r.dias);
+  if(!filas.length) return '';
+  const mu = t => `<small style="color:var(--muted)">${t}</small>`;
+  return `<div class="section"><h4>💰 Cuánto te debe pagar (semana y mes)</h4>
     <div class="tablewrap"><table>
-      <thead><tr><th>Período</th><th class="n">Sin días libres</th><th class="n">No se cobra<br>(días libres)</th><th class="n">Te deben pagar</th></tr></thead>
-      <tbody>${filas.map(([t, a, b, rango]) => {
-        const r = ingresoRango(vCompleto, a, b);
-        return `<tr><td><b>${t}</b><br><small style="color:var(--muted)">${rango} · ${plural(r.cobrables + r.nLibres,'día')}</small></td>
-          <td class="n">${money(r.bruto)}</td>
-          <td class="n"><b style="color:${r.nLibres?'var(--warn)':'var(--muted)'}">−${money(r.rebajado)}</b><br>
-            <small style="color:var(--muted)">${r.nLibres ? plural(r.nLibres,'día libre','días libres') : 'ningún día libre'}</small></td>
-          <td class="n"><b style="color:var(--ok)">${money(r.total)}</b><br>
-            <small style="color:var(--muted)">${plural(r.cobrables,'día cobrado','días cobrados')}</small></td></tr>`;
+      <thead><tr><th>Período</th><th class="n">Debe dar</th><th class="n">Ya pagó</th><th class="n">Le falta</th></tr></thead>
+      <tbody>${filas.map(({t, a, rango, r}) => {
+        const rebajas = [r.libres ? `−${money(r.libresMonto)} · ${plural(r.libres,'día libre','días libres')}` : '',
+                         r.permisos ? `−${money(r.permisosMonto)} · ${plural(r.permisos,'permiso','permisos')}` : ''].filter(Boolean);
+        return `<tr><td><b>${t}</b><br>${mu(`${rango}${r.inicio && r.inicio > isoF(a) ? ' · desde la entrega ' + cortaF(r.inicio) : ''} · ${plural(r.dias,'día')}`)}</td>
+          <td class="n"><b>${money(r.total)}</b>${rebajas.length ? `<br>${mu('de ' + money(r.bruto))}<br>${rebajas.map(x=>`<small style="color:var(--warn)">${x}</small>`).join('<br>')}` : `<br>${mu(plural(r.cobrables,'día cobrado','días cobrados'))}`}</td>
+          <td class="n"><b style="color:${r.pagado>0.01?'var(--ok)':'var(--muted)'}">${money(r.pagado)}</b></td>
+          <td class="n"><b style="color:${r.falta>0.01?'var(--danger)':'var(--ok)'}">${r.falta>0.01 ? money(r.falta) : '✓ Completo'}</b></td></tr>`;
       }).join('')}</tbody>
     </table></div>
-    ${hayLibres ? '' : `<small style="color:var(--muted)">Este vehículo no tiene días libres guardados. Márcalos con 🌴 Días libres y pulsa “Guardar días libres” para que se rebajen aquí.</small>`}
+    ${mu('“Ya pagó” cuenta lo que sus pagos cubren de ese período; si debía días anteriores, los pagos cubren esos primero.')}
     </div>`;
 }
 function estadoDia(c, d){
@@ -859,6 +890,17 @@ function facturaVehiculo(v, pago){
   if(c.aFavor > 0.01) filas.push({t:'Saldo a favor', v:money(c.aFavor), color:'ok'});
   filas.push({t:'Debe por renta', nota: c.diasDebe.length ? plural(c.diasDebe.length,'día') + ': ' + rangosDias(c.diasDebe) : 'Sin días pendientes',
               v:money(c.deuda), color: c.deuda > 0.01 ? 'bad' : 'ok'});
+  // semana y mes: lo que debe dar (rebajando días libres y permisos), lo que ya pagó y lo que le falta
+  periodosIngreso().slice(0, 2).forEach(p => {
+    const r = resumenPeriodo(v, p.a, p.b); if(!r.dias) return;
+    filas.push({seccion:`${p.t} (${p.rango})`});
+    filas.push({t:'Sin días libres', nota: plural(r.dias,'día') + (r.inicio > isoF(p.a) ? ' · desde la entrega ' + cortaF(r.inicio) : ''), v:money(r.bruto)});
+    if(r.libres) filas.push({t:'Días libres', nota: plural(r.libres,'día') + ' sin cobrar', v:'−' + money(r.libresMonto)});
+    if(r.permisos) filas.push({t:'Permisos por emergencia', nota: r.listaPermisos.map(f => cortaF(f) + ' ' + textoMotivo(v, f)).join(' · '), v:'−' + money(r.permisosMonto)});
+    filas.push({t:'Debe dar', nota: plural(r.cobrables,'día cobrado','días cobrados'), v:money(r.total), fuerte:true});
+    filas.push({t:'Ya pagó', v:money(r.pagado), color: r.pagado > 0.01 ? 'ok' : undefined});
+    filas.push({t:'Le falta', v: r.falta > 0.01 ? money(r.falta) : 'Completo ✓', color: r.falta > 0.01 ? 'bad' : 'ok', fuerte:true});
+  });
   if(pend.length){
     filas.push({seccion:'Daños / cargos pendientes'});
     pend.forEach(x=>filas.push({t:x.desc, nota:fmtF(x.fecha), v:money(+x.monto), color:'bad'}));
