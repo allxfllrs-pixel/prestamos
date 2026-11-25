@@ -430,20 +430,29 @@ function ingresoRango(v, desde, hasta, libres){
   }
   return {total, bruto, cobrables, nLibres, rebajado: bruto - total};
 }
-function cajaIngreso(titulo, r, rango){
-  return `<div><span>${titulo}</span><b style="color:var(--ok)">${money(r.total)}</b>
-    <small>${rango} · ${plural(r.cobrables,'día')} cobrado${r.cobrables===1?'':'s'}${r.nLibres?` · ${r.nLibres} libre${r.nLibres===1?'':'s'} (−${money(r.rebajado)})`:''}</small></div>`;
-}
+/* Cuánto te deben pagar por semana y por mes: el total sin días libres y el total rebajando
+   los días libres marcados en ese período (semana o mes completo, a la tarifa de cada día). */
 function seccionIngreso(v){
   const h = hoy(), lun = lunesDe(h), dom = addDays(lun, 6);
-  const m1 = new Date(h.getFullYear(), h.getMonth(), 1), m2 = new Date(h.getFullYear(), h.getMonth()+1, 0);
   const corta = d => d.toLocaleDateString('es',{day:'numeric', month:'short'});
-  const mes = h.toLocaleDateString('es',{month:'long'});
-  return `<div class="section"><h4>💰 Lo que te da (sin contar días libres)</h4>
-    <div class="destacado" style="margin-top:0">
-      ${cajaIngreso('Esta semana', ingresoRango(v, lun, dom), `${corta(lun)} – ${corta(dom)}`)}
-      ${cajaIngreso('Este mes', ingresoRango(v, m1, m2), mes.charAt(0).toUpperCase()+mes.slice(1))}
-    </div></div>`;
+  const nomMes = d => { const t = d.toLocaleDateString('es',{month:'long'}); return t.charAt(0).toUpperCase()+t.slice(1); };
+  const filas = [['Esta semana', lun, dom, `${corta(lun)} – ${corta(dom)}`]];
+  for(let i = 0; i < 2; i++){
+    const a = new Date(h.getFullYear(), h.getMonth()+i, 1), b = new Date(h.getFullYear(), h.getMonth()+i+1, 0);
+    filas.push([i ? 'Próximo mes' : 'Este mes', a, b, nomMes(a)]);
+  }
+  const vCompleto = {...v, fechaInicio:'0000-01-01', estado:'activo'};   // período completo, sin importar la fecha de entrega
+  return `<div class="section"><h4>💰 Cuánto te deben pagar</h4>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Período</th><th class="n">Sin días libres</th><th class="n">Días libres</th><th class="n">Con días libres</th></tr></thead>
+      <tbody>${filas.map(([t, a, b, rango]) => {
+        const r = ingresoRango(vCompleto, a, b);
+        return `<tr><td><b>${t}</b><br><small style="color:var(--muted)">${rango} · ${plural(r.cobrables + r.nLibres,'día')}</small></td>
+          <td class="n">${money(r.bruto)}</td>
+          <td class="n">${r.nLibres ? `${r.nLibres} <small style="color:var(--muted)">(−${money(r.rebajado)})</small>` : '—'}</td>
+          <td class="n"><b style="color:var(--ok)">${money(r.total)}</b></td></tr>`;
+      }).join('')}</tbody>
+    </table></div></div>`;
 }
 function estadoDia(c, d){
   const iso = isoF(d);
@@ -732,8 +741,6 @@ function verDetalle(id){
       </table></div>
     </div>`:''}
 
-    ${seccionIngreso(v)}
-
     <div class="section">
       <h4>Últimos 30 días</h4>
       ${tiraDias(c, 30)}${LEYENDA}
@@ -765,6 +772,8 @@ function verDetalle(id){
       ${c.deuda>0.01?`<button onclick="abonar('${v.id}',true)">✓ Pagó todo (${money(c.deuda)})</button>`:''}
       ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Días libres</button>`:''}
     </div>`:''}
+
+    ${seccionIngreso(v)}
 
     <div class="section">
       <h4 style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
