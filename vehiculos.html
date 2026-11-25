@@ -442,17 +442,22 @@ function seccionIngreso(v){
     filas.push([i ? 'Próximo mes' : 'Este mes', a, b, nomMes(a)]);
   }
   const vCompleto = {...v, fechaInicio:'0000-01-01', estado:'activo'};   // período completo, sin importar la fecha de entrega
+  const hayLibres = (v.diasLibresFechas||[]).length > 0;
   return `<div class="section"><h4>💰 Cuánto te deben pagar</h4>
     <div class="tablewrap"><table>
-      <thead><tr><th>Período</th><th class="n">Sin días libres</th><th class="n">Días libres</th><th class="n">Con días libres</th></tr></thead>
+      <thead><tr><th>Período</th><th class="n">Sin días libres</th><th class="n">No se cobra<br>(días libres)</th><th class="n">Te deben pagar</th></tr></thead>
       <tbody>${filas.map(([t, a, b, rango]) => {
         const r = ingresoRango(vCompleto, a, b);
         return `<tr><td><b>${t}</b><br><small style="color:var(--muted)">${rango} · ${plural(r.cobrables + r.nLibres,'día')}</small></td>
           <td class="n">${money(r.bruto)}</td>
-          <td class="n">${r.nLibres ? `${r.nLibres} <small style="color:var(--muted)">(−${money(r.rebajado)})</small>` : '—'}</td>
-          <td class="n"><b style="color:var(--ok)">${money(r.total)}</b></td></tr>`;
+          <td class="n"><b style="color:${r.nLibres?'var(--warn)':'var(--muted)'}">−${money(r.rebajado)}</b><br>
+            <small style="color:var(--muted)">${r.nLibres ? plural(r.nLibres,'día libre','días libres') : 'ningún día libre'}</small></td>
+          <td class="n"><b style="color:var(--ok)">${money(r.total)}</b><br>
+            <small style="color:var(--muted)">${plural(r.cobrables,'día cobrado','días cobrados')}</small></td></tr>`;
       }).join('')}</tbody>
-    </table></div></div>`;
+    </table></div>
+    ${hayLibres ? '' : `<small style="color:var(--muted)">Este vehículo no tiene días libres guardados. Márcalos con 🌴 Días libres y pulsa “Guardar días libres” para que se rebajen aquí.</small>`}
+    </div>`;
 }
 function estadoDia(c, d){
   const iso = isoF(d);
