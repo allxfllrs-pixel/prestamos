@@ -132,6 +132,7 @@ textarea{resize:vertical;min-height:60px}
 .cal button:disabled{opacity:.3;cursor:default}
 .libres{display:flex;gap:6px;flex-wrap:wrap}
 .libres span{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:20px;padding:3px 4px 3px 10px;font-size:13px}
+.libres span.motivo{background:color-mix(in srgb, var(--warn) 18%, var(--soft))}
 .libres button{padding:2px 8px;font-size:12px;border-radius:20px}
 .cardfoot .botones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .cardfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted)}
@@ -276,6 +277,30 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div class="actions" style="margin-top:0">
         <button type="button" onclick="cerrar('ovLibre')">Cancelar</button>
         <button type="submit" class="primary" id="lbBtn">Guardar días libres</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Permiso por emergencia: días libres con motivo (enfermedad, luto, etc.) -->
+<div class="overlay" id="ovPermiso">
+  <div class="modal chico">
+    <div class="head"><h2>🩹 Permiso por emergencia</h2><button class="small" onclick="cerrar('ovPermiso')" aria-label="Cerrar">✕</button></div>
+    <form id="permisoForm" onsubmit="guardarPermiso(event)" style="display:grid;gap:10px">
+      <div id="pmQuien" class="preview"></div>
+      <div>
+        <label>¿Por qué se le da?</label>
+        <div class="rapidos" id="pmMotivos"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="pm_desde">Desde</label><input id="pm_desde" type="date" required></div>
+        <div><label for="pm_dias">Cuántos días</label><input id="pm_dias" type="number" min="1" max="60" step="1" value="1" required style="font-weight:700"></div>
+      </div>
+      <div><label for="pm_nota">Detalle (opcional)</label><input id="pm_nota" maxlength="200" autocomplete="off" placeholder="Ej.: falleció su mamá, tiene dengue, accidente en la casa…"></div>
+      <div id="pmAviso" class="preview"></div>
+      <div class="actions" style="margin-top:0">
+        <button type="button" onclick="cerrar('ovPermiso')">Cancelar</button>
+        <button type="submit" class="primary" id="pmBtn">Dar días sin cobrar</button>
       </div>
     </form>
   </div>
@@ -775,7 +800,8 @@ function verDetalle(id){
     <div class="section" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary" onclick="abonar('${v.id}')">💵 ${c.deuda>0.01?'Abonar a la deuda':'Adelantar pago'}</button>
       ${c.deuda>0.01?`<button onclick="abonar('${v.id}',true)">✓ Pagó todo (${money(c.deuda)})</button>`:''}
-      ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Días libres</button>`:''}
+      ${!finalizado?`<button onclick="diaLibre('${v.id}')">🌴 Días libres</button>
+      <button onclick="permiso('${v.id}')" title="Enfermedad, luto u otra emergencia: días que no se le cobran, con el motivo">🩹 Permiso por emergencia</button>`:''}
     </div>`:''}
 
     ${seccionIngreso(v)}
@@ -792,7 +818,7 @@ function verDetalle(id){
 
     ${(v.diasLibresFechas||[]).length?`<div class="section">
       <h4>🌴 Días libres (${v.diasLibresFechas.length})</h4>
-      <div class="libres">${v.diasLibresFechas.slice().sort().reverse().map(f=>`<span>${parseF(f).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})}
+      <div class="libres">${v.diasLibresFechas.slice().sort().reverse().map(f=>`<span${motivoDe(v,f)?` class="motivo" title="${esc(textoMotivo(v,f))}"`:''}>${parseF(f).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})}${motivoDe(v,f)?` · ${esc(textoMotivo(v,f))}`:''}
         <button type="button" onclick="quitarDiaLibre('${v.id}','${f}')" title="Quitar este día libre (se vuelve a cobrar)">Quitar</button></span>`).join('')}</div>
     </div>`:''}
 
@@ -1033,7 +1059,7 @@ async function guardarDiaLibre(e){
   const base = data.find(x=>x.id===libreId); if(!base) return;
   const antes = new Set(base.diasLibresFechas || []);
   const nuevos = [...libreSel].filter(f => !antes.has(f)).length, quitados = [...antes].filter(f => !libreSel.has(f)).length;
-  const v = {...base, diasLibresFechas: [...libreSel].sort()};
+  const v = limpiarMotivos({...base, diasLibresFechas: [...libreSel].sort()});
   if(!v.diasLibresFechas.length) delete v.diasLibresFechas;
   const btn = document.getElementById('lbBtn'); btn.disabled = true;
   try{
@@ -1043,10 +1069,82 @@ async function guardarDiaLibre(e){
     toast('🌴 Días libres guardados' + (nuevos ? ` · ${nuevos} nuevo${nuevos===1?'':'s'}` : '') + (quitados ? ` · ${quitados} quitado${quitados===1?'':'s'}` : ''));
   }catch(err){ errorGuardar(err); btn.disabled = false; }
 }
+/* ---------- permiso por emergencia: días libres con motivo ----------
+   Los días se agregan a diasLibresFechas (así no se cobran) y el motivo se guarda aparte en
+   motivosLibres: { 'AAAA-MM-DD': {m:'enfermedad', nota:'...'} }. */
+const MOTIVOS = {enfermedad:'🤒 Enfermedad', luto:'🖤 Luto', emergencia:'🚨 Emergencia familiar', accidente:'🩹 Accidente', otro:'📝 Otro motivo'};
+const motivoDe = (v, f) => (v.motivosLibres || {})[f] || null;
+function textoMotivo(v, f){
+  const x = motivoDe(v, f); if(!x) return '';
+  return (MOTIVOS[x.m] || MOTIVOS.otro) + (x.nota ? ': ' + x.nota : '');
+}
+let permisoId = null, permisoMotivo = 'enfermedad';
+function permiso(id){
+  const v = data.find(x=>x.id===id); if(!v) return;
+  permisoId = id; permisoMotivo = 'enfermedad';
+  document.getElementById('permisoForm').reset();
+  document.getElementById('pm_desde').value = isoF(hoy());
+  document.getElementById('pmQuien').innerHTML = `<b>${esc(v.nombre)}</b> · ${esc(nombreAuto(v))} <span class="placa">${esc(v.placa)}</span><br>Por algo fuera de su control: esos días no se le cobra la tarifa y queda anotado el motivo.`;
+  pintarPermiso();
+  abrir('ovPermiso');
+}
+function diasPermiso(v){
+  const desde = document.getElementById('pm_desde').value, n = Math.min(60, Math.max(0, Math.floor(+document.getElementById('pm_dias').value || 0)));
+  if(!desde || !n) return [];
+  const fin = v.estado==='finalizado' && v.fechaFin ? v.fechaFin : null, out = [];
+  for(let i = 0, d = parseF(desde); i < n; i++, d = addDays(d,1)){
+    const iso = isoF(d);
+    if(iso >= v.fechaInicio && (!fin || iso <= fin)) out.push(iso);
+  }
+  return out;
+}
+function pintarPermiso(){
+  const v = data.find(x=>x.id===permisoId); if(!v) return;
+  document.getElementById('pmMotivos').innerHTML = Object.entries(MOTIVOS).map(([k,t]) =>
+    `<button type="button" class="${k===permisoMotivo?'primary':''}" data-m="${k}" aria-pressed="${k===permisoMotivo}">${k===permisoMotivo?'✓ ':''}${t}</button>`).join('');
+  document.querySelectorAll('#pmMotivos button').forEach(b => b.onclick = () => { permisoMotivo = b.dataset.m; pintarPermiso(); });
+  const dias = diasPermiso(v), ya = new Set(v.diasLibresFechas || []);
+  const tarifas = listaTarifas(v);
+  const nuevos = dias.filter(f => !ya.has(f));
+  const monto = nuevos.reduce((t,f) => t + tarifaEn(tarifas, parseF(f)), 0);
+  const fc = f => parseF(f).toLocaleDateString('es',{weekday:'short', day:'numeric', month:'short'});
+  document.getElementById('pmAviso').innerHTML = dias.length
+    ? `${plural(dias.length,'día')}: <b>${fc(dias[0])}${dias.length>1?' – '+fc(dias[dias.length-1]):''}</b>` +
+      `<br>No se le cobran <b style="color:var(--warn)">${money(monto)}</b>` +
+      (dias.length - nuevos.length ? `<br><small style="color:var(--muted)">${plural(dias.length - nuevos.length,'día ya era libre','días ya eran libres')}: solo se le anota el motivo.</small>` : '')
+    : '<span style="color:var(--danger)">Elige una fecha dentro del alquiler.</span>';
+  document.getElementById('pmBtn').disabled = !dias.length;
+}
+['pm_desde','pm_dias'].forEach(id => document.getElementById(id).addEventListener('input', pintarPermiso));
+async function guardarPermiso(e){
+  e.preventDefault();
+  const base = data.find(x=>x.id===permisoId); if(!base) return;
+  const dias = diasPermiso(base); if(!dias.length) return;
+  const nota = document.getElementById('pm_nota').value.trim();
+  const libres = new Set([...(base.diasLibresFechas || []), ...dias]);
+  const motivos = {...(base.motivosLibres || {})};
+  dias.forEach(f => motivos[f] = nota ? {m: permisoMotivo, nota} : {m: permisoMotivo});
+  const v = {...base, diasLibresFechas: [...libres].sort(), motivosLibres: motivos};
+  const btn = document.getElementById('pmBtn'); btn.disabled = true;
+  try{
+    await guardarDoc(v); reemplazar(v); render();
+    if(document.getElementById('ovDetalle').classList.contains('open')) verDetalle(v.id);
+    cerrar('ovPermiso');
+    toast(`${MOTIVOS[permisoMotivo]} · ${plural(dias.length,'día')} sin cobrar`);
+  }catch(err){ errorGuardar(err); btn.disabled = false; }
+}
+/* Quita los motivos de los días que ya no son libres */
+function limpiarMotivos(v){
+  if(!v.motivosLibres) return v;
+  const libres = new Set(v.diasLibresFechas || []), m = {};
+  for(const [f, x] of Object.entries(v.motivosLibres)) if(libres.has(f)) m[f] = x;
+  if(Object.keys(m).length) v.motivosLibres = m; else delete v.motivosLibres;
+  return v;
+}
 async function quitarDiaLibre(id, fecha){
   const base = data.find(x=>x.id===id); if(!base) return;
   if(!await confirmar('Quitar día libre', `¿Volver a cobrar el ${parseF(fecha).toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'})} a <b>${esc(base.nombre)}</b>?`, 'Quitar')) return;
-  const v = {...base, diasLibresFechas: (base.diasLibresFechas||[]).filter(f=>f!==fecha)};
+  const v = limpiarMotivos({...base, diasLibresFechas: (base.diasLibresFechas||[]).filter(f=>f!==fecha)});
   try{ await guardarDoc(v); reemplazar(v); render(); verDetalle(id); toast('Día libre quitado'); }
   catch(err){ errorGuardar(err); }
 }
