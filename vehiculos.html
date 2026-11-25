@@ -414,6 +414,37 @@ function calc(v){
           proxFecha, proxMonto, tarifaHoy: tarifaEn(tarifas, h), libreHoy: libres.has(isoF(h)), libres, tarifas, dias, ini, fin, ultimoPago, h,
           cargosPend: (v.cargos||[]).filter(x=>x.cobrar && !x.pagado).reduce((t,x)=>t + (+x.monto||0), 0)};
 }
+/* Cuánto da el vehículo entre dos fechas (incluidas): suma la tarifa de cada día del alquiler
+   y no cuenta los días libres. 'libres' permite pasar días marcados sin guardar. */
+function ingresoRango(v, desde, hasta, libres){
+  libres = libres || new Set(v.diasLibresFechas || []);
+  const tarifas = listaTarifas(v), ini = v.fechaInicio;
+  const fin = v.estado==='finalizado' && v.fechaFin ? v.fechaFin : null;
+  let total = 0, bruto = 0, cobrables = 0, nLibres = 0;
+  for(let d = new Date(desde); d <= hasta; d = addDays(d,1)){
+    const iso = isoF(d);
+    if(iso < ini || (fin && iso > fin)) continue;
+    const m = tarifaEn(tarifas, d);
+    bruto += m;
+    if(libres.has(iso)) nLibres++; else { total += m; cobrables++; }
+  }
+  return {total, bruto, cobrables, nLibres, rebajado: bruto - total};
+}
+function cajaIngreso(titulo, r, rango){
+  return `<div><span>${titulo}</span><b style="color:var(--ok)">${money(r.total)}</b>
+    <small>${rango} · ${plural(r.cobrables,'día')} cobrado${r.cobrables===1?'':'s'}${r.nLibres?` · ${r.nLibres} libre${r.nLibres===1?'':'s'} (−${money(r.rebajado)})`:''}</small></div>`;
+}
+function seccionIngreso(v){
+  const h = hoy(), lun = lunesDe(h), dom = addDays(lun, 6);
+  const m1 = new Date(h.getFullYear(), h.getMonth(), 1), m2 = new Date(h.getFullYear(), h.getMonth()+1, 0);
+  const corta = d => d.toLocaleDateString('es',{day:'numeric', month:'short'});
+  const mes = h.toLocaleDateString('es',{month:'long'});
+  return `<div class="section"><h4>💰 Lo que te da (sin contar días libres)</h4>
+    <div class="destacado" style="margin-top:0">
+      ${cajaIngreso('Esta semana', ingresoRango(v, lun, dom), `${corta(lun)} – ${corta(dom)}`)}
+      ${cajaIngreso('Este mes', ingresoRango(v, m1, m2), mes.charAt(0).toUpperCase()+mes.slice(1))}
+    </div></div>`;
+}
 function estadoDia(c, d){
   const iso = isoF(d);
   if(d < c.ini || (c.fin && d > c.fin)) return 'na';
@@ -701,6 +732,8 @@ function verDetalle(id){
       </table></div>
     </div>`:''}
 
+    ${seccionIngreso(v)}
+
     <div class="section">
       <h4>Últimos 30 días</h4>
       ${tiraDias(c, 30)}${LEYENDA}
@@ -977,6 +1010,7 @@ function pintarCalLibre(){
   document.getElementById('libreAviso').innerHTML =
     `<b>${enMes.length}</b> día${enMes.length===1?'':'s'} libre${enMes.length===1?'':'s'} en ${libreMes.toLocaleDateString('es',{month:'long'})}` +
     (enMes.length ? ` · no se le cobran <b>${money(ahorro)}</b>` : '') +
+    `<br>Este mes te da <b style="color:var(--ok)">${money(ingresoRango(v, libreMes, new Date(libreMes.getFullYear(), libreMes.getMonth()+1, 0), libreSel).total)}</b>` +
     (nuevos.length || quitados.length ? `<br><span style="color:var(--warn)">Sin guardar: ${nuevos.length ? `+${nuevos.length} marcado${nuevos.length===1?'':'s'}` : ''}${nuevos.length && quitados.length ? ', ' : ''}${quitados.length ? `${quitados.length} quitado${quitados.length===1?'':'s'}` : ''}</span>` : '');
   document.getElementById('lbBtn').disabled = !nuevos.length && !quitados.length;
 }
